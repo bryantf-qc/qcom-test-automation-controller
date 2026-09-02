@@ -108,7 +108,7 @@ bool TACPSOCDriveThread::openSerialDevice()
     SerialPortSettings settings;
     settings.baudRate = 115200;
 
-    _serialPort = std::make_unique<SerialPort>(_tacPortInfo);
+    _serialPort = std::unique_ptr<SerialPort>(new SerialPort(_tacPortInfo));
     _serialPort->setSettings(settings);
 
     // Wire the readyRead callback so readSerialData() knows when data arrived.

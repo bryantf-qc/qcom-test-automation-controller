@@ -163,7 +163,7 @@ static void test_drive_thread_lifecycle()
     qtac::String     capturedName;
     std::atomic<int> logLineCount{0};
 
-    auto driveThread = std::make_unique<qtac::TACLiteDriveThread>(hash);
+    auto driveThread = std::unique_ptr<qtac::TACLiteDriveThread>(new qtac::TACLiteDriveThread(hash));
 
     driveThread->onDeviceConnected.connect([&]() {
         ++connectedCount;

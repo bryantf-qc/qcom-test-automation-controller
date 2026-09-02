@@ -63,7 +63,7 @@ struct PIC32CXPinData
 
     static HashType makePIC32CXHash(PinID setPin)
     {
-        return strHash(qtac::String::number(static_cast<uint64_t>(setPin)));
+        return strHash(qtac::String::number(static_cast<unsigned long long>(setPin)));
     }
 
     HashType        _hash{0};

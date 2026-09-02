@@ -260,7 +260,7 @@ static void test_drive_thread_direct()
     qtac::String      capturedName;
     qtac::ByteArray   lastLogLine;
 
-    auto driveThread = std::make_unique<qtac::TACPSOCDriveThread>(hash);
+    auto driveThread = std::unique_ptr<qtac::TACPSOCDriveThread>(new qtac::TACPSOCDriveThread(hash));
 
     driveThread->onDeviceConnected.connect([&]() {
         ++connectedCount;

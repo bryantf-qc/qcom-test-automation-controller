@@ -87,6 +87,7 @@ else()
 endif()
 
 add_library(serialport STATIC ${LIBSERIALPORT_SOURCES})
+set_target_properties(serialport PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(serialport PUBLIC "${libserialport_SOURCE_DIR}")
 if(NOT WIN32)
     target_include_directories(serialport PRIVATE "${LIBSERIALPORT_CONFIG_DIR}")
@@ -209,6 +210,8 @@ if(QTAC_BUILD_FTDI)
             HINTS
                 "/usr/local/lib"
                 "${CMAKE_CURRENT_SOURCE_DIR}/../../third-party/ftd2xx/linux"
+                "${CMAKE_SOURCE_DIR}/__Builds/Linux/Debug/lib"
+                "${CMAKE_SOURCE_DIR}/__Builds/Linux/Release/lib"
         )
         if(FTD2XX_LIB)
             target_link_libraries(qtac-core PUBLIC ${FTD2XX_LIB} dl pthread)

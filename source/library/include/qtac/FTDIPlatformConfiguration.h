@@ -126,7 +126,7 @@ struct FTDIPinData
 	{
 		return strHash(qtac::String::number(chipIndex)
 		             + qtac::String(bus)
-		             + qtac::String::number(static_cast<uint64_t>(pin)));
+		             + qtac::String::number(static_cast<unsigned long long>(pin)));
 	}
 
 	HashType        _hash{0};

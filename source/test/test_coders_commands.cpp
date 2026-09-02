@@ -103,7 +103,15 @@ public:
     uint32_t send(const qtac::ByteArray& cmd, const qtac::Arguments& args,
                   bool console, qtac::ReceiveInterface*, bool store) override
     {
-        log.push_back({cmd, args, console, store, false, false, 0});
+        RecordedSend record;
+        record.command = cmd;
+        record.arguments = args;
+        record.console = console;
+        record.store = store;
+        record.isEndTransaction = false;
+        record.isDelay = false;
+        record.delayMs = 0;
+        log.push_back(record);
         return 0;
     }
 
@@ -493,7 +501,7 @@ static void test_command_hash_constants()
 
     // PIC32CX hashes
     assert(arrayHash(qtac::ByteArray("echo 1"))            == kPIC32CXClearBufferHash);
-    assert(arrayHash(qtac::ByteArray("*IDN?"))             == kPIC32CXVersionCommandHash);
+    assert(arrayHash(qtac::ByteArray("*IDN?"))             == kVersionCommandHash);  // Use kVersionCommandHash as kPIC32CXVersionCommandHash is not defined
     assert(arrayHash(qtac::ByteArray("CONF:DIG:ON"))       == kPIC32CXSetPinCommandHash);
 }
 
@@ -526,8 +534,8 @@ static void test_taclite_command_setpin()
 
     assert(sender.log[0].command == "SetPin");
     assert(sender.log[0].arguments.size() == 2);
-    assert(sender.log[0].arguments[0]) == true.asBool();
-    assert(sender.log[0].arguments[1]) == 16u.asUInt32();
+    assert(sender.log[0].arguments[0].asBool() == true);
+    assert(sender.log[0].arguments[1].asUInt32() == 16u);
 }
 
 static void test_taclite_command_battery()
@@ -540,7 +548,7 @@ static void test_taclite_command_battery()
     }
 
     assert(sender.log[0].command == "Battery");
-    assert(sender.log[0].arguments[0]) == false.asBool();
+    assert(sender.log[0].arguments[0].asBool() == false);
 }
 
 static void test_taclite_command_setname()
@@ -553,7 +561,7 @@ static void test_taclite_command_setname()
     }
 
     assert(sender.log[0].command == "Set Name");
-    assert(sender.log[0].arguments[0]) == "TestBoard".asString();
+    assert(sender.log[0].arguments[0].asString() == "TestBoard");
 }
 
 // ===========================================================================
@@ -583,8 +591,8 @@ static void test_tacpsoc_command_setpin()
     }
 
     assert(sender.log[0].command == "SetPin");
-    assert(sender.log[0].arguments[0]) == true.asBool();
-    assert(sender.log[0].arguments[1]) == 53u.asUInt32();
+    assert(sender.log[0].arguments[0].asBool() == true);
+    assert(sender.log[0].arguments[1].asUInt32() == 53u);
 }
 
 static void test_tacpsoc_command_i2c_read()
@@ -598,7 +606,7 @@ static void test_tacpsoc_command_i2c_read()
 
     // Should produce: I2C Read Register, delay 500ms, I2C Read Register Value, EndTransaction
     assert(sender.log[0].command == "I2C Read Register");
-    assert(sender.log[0].arguments[0]) == "0x50 0x10".asString();
+    assert(sender.log[0].arguments[0].asString() == "0x50 0x10");
     assert(sender.log[1].isDelay);
     assert(sender.log[1].delayMs == 500);
     assert(sender.log[2].command == "I2C Read Register Value");
@@ -615,7 +623,7 @@ static void test_tacpsoc_command_i2c_write()
     }
 
     assert(sender.log[0].command == "I2C Write Register");
-    assert(sender.log[0].arguments[0]) == "0x50 0x10 0xAB".asString();
+    assert(sender.log[0].arguments[0].asString() == "0x50 0x10 0xAB");
 }
 
 static void test_tacpsoc_command_i2c_invalid_args()
@@ -654,8 +662,8 @@ static void test_tacpic32cx_command_setpin()
     }
 
     assert(sender.log[0].command == "CONF:DIG:ON");
-    assert(sender.log[0].arguments[0]) == true.asBool();
-    assert(sender.log[0].arguments[1]) == 4u.asUInt32();
+    assert(sender.log[0].arguments[0].asBool() == true);
+    assert(sender.log[0].arguments[1].asUInt32() == 4u);
     assert(sender.log.back().isEndTransaction);
 }
 

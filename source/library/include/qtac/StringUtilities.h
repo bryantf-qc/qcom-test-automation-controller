@@ -60,29 +60,36 @@ HashType arrayHash(const qtac::ByteArray& hashMe);
 // Wrapping of upper-case chars is reproduced via unsigned 64-bit arithmetic
 // (c as unsigned + (2^64 - 96)) which equals static_cast<uint64_t>(c-'a'+1)
 // for any char value, including negative ones on signed-char platforms.
+
+// Constants for the hash computation
+constexpr uint64_t kHashP = 257;
+constexpr uint64_t kHashM = 1000000009ULL;
+constexpr uint64_t kHashOffset = static_cast<uint64_t>(-static_cast<int>('a') + 1);
+
+// Helper function for C++11 constexpr compatibility (recursive implementation)
+constexpr HashType computeHashStrImpl(const char* str, std::size_t len, std::size_t i,
+                                      uint64_t result, uint64_t p_pow) noexcept
+{
+    return (i >= len) ? result :
+        computeHashStrImpl(str, len, i + 1,
+            (result + ((static_cast<uint64_t>(static_cast<unsigned char>(str[i])) + kHashOffset) * p_pow)) % kHashM,
+            (p_pow * kHashP) % kHashM);
+}
+
 constexpr HashType computeHashStr(const char* str, std::size_t len) noexcept
 {
-    constexpr uint64_t p = 257;
-    constexpr uint64_t m = 1000000009ULL;
-    // (uint64_t)c + (uint64_t)(-'a'+1)  ==  (uint64_t)(c - 'a' + 1) under wrapping
-    constexpr uint64_t kOffset = static_cast<uint64_t>(-static_cast<int>('a') + 1);
-    uint64_t result = 0;
-    uint64_t p_pow  = 1;
-    for (std::size_t i = 0; i < len; ++i)
-    {
-        const uint64_t cu     = static_cast<uint64_t>(static_cast<unsigned char>(str[i]));
-        const uint64_t offset = cu + kOffset;            // wraps naturally in uint64
-        result = (result + offset * p_pow) % m;
-        p_pow  = (p_pow * p) % m;
-    }
-    return result;
+    return computeHashStrImpl(str, len, 0, 0, 1);
+}
+
+// Helper to compute string length at compile time
+constexpr std::size_t constexprStrLen(const char* str, std::size_t i = 0) noexcept
+{
+    return str[i] ? constexprStrLen(str, i + 1) : i;
 }
 
 constexpr HashType computeHashStr(const char* str) noexcept
 {
-    std::size_t len = 0;
-    while (str[len]) ++len;
-    return computeHashStr(str, len);
+    return computeHashStr(str, constexprStrLen(str));
 }
 
 } // namespace qtac

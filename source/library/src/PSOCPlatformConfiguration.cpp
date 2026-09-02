@@ -315,7 +315,7 @@ bool _PSOCPlatformConfiguration::read(json_t& j)
             if (pe->contains(kPinNumber))
                 pinData._pin = static_cast<PinID>(std::stoull(qtac::json_util::toString(pe->at(kPinNumber))));
 
-            pinData._hash = strHash(qtac::String::number(static_cast<uint64_t>(pinData._pin)));
+            pinData._hash = strHash(qtac::String::number(static_cast<unsigned long long>(pinData._pin)));
 
             if (pe->contains(kEnabled))       pinData._enabled                = qtac::json_util::toBool(pe->at(kEnabled));
             if (pe->contains(kInitialValue))  pinData._initialValue           = qtac::json_util::toBool(pe->at(kInitialValue));
@@ -501,7 +501,7 @@ void _PSOCPlatformConfiguration::write(json_t& j)
     {
         const PSOCPinData& p = kv.second;
         boost::json::object entry;
-        entry[kPinNumber]     = qtac::String::number(static_cast<uint64_t>(p._pin)).toStdString();
+        entry[kPinNumber]     = qtac::String::number(static_cast<unsigned long long>(p._pin)).toStdString();
         entry[kEnabled]       = p._enabled;
         entry[kInitialValue]  = p._initialValue;
         entry[kPriority]      = p._initializationPriority;
@@ -539,7 +539,7 @@ void _PSOCPlatformConfiguration::initialize()
     {
         PSOCPinData p;
         p._pin                    = pin;
-        p._hash                   = strHash(qtac::String::number(static_cast<uint64_t>(pin)));
+        p._hash                   = strHash(qtac::String::number(static_cast<unsigned long long>(pin)));
         p._pinLabel               = label ? label : "";
         p._pinCommand             = cmd ? cmd : "";
         p._pinTooltip             = tooltip ? tooltip : "";
