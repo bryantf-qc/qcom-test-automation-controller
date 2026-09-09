@@ -72,7 +72,6 @@ void _AlpacaDevice::getAlpacaDevices(AlpacaDevices& alpacaDevices, DebugBoardTyp
 uint32_t _AlpacaDevice::updateAlpacaDevices()
 {
 	_alpacaDevices.clear();
-	std::lock_guard<std::mutex> lock(_mutex);
 	// Concrete device classes (FTDIDevice) call their own updateAlpacaDevices()
 	// and push into _alpacaDevices. See FTDIDevice::updateAlpacaDevices().
 	return static_cast<uint32_t>(_alpacaDevices.size());

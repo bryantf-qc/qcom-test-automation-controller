@@ -57,6 +57,10 @@ public:
 
     QByteArray selectedPortName() const { return _selectedPort; }
 
+public slots:
+    void accept() override;
+    void reject() override;
+
 private slots:
     void onTableClicked(const QModelIndex& index);
     void onTableDoubleClicked(const QModelIndex& index);
@@ -68,4 +72,5 @@ private:
     Ui::TACDeviceSelectionClass* _ui{nullptr};
     QTimer*                      _timer{nullptr};
     QByteArray                   _selectedPort;
+    bool                         _closing{false};  // Flag to prevent refresh during close
 };
