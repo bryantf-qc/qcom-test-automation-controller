@@ -332,9 +332,10 @@ static void test_open_close()
 
     // Connect the device-level pin signal before open() so we know the
     // forwarding wire from _serialDriveThread is in place.
-    std::atomic<int> pinSignalCount{0};
-    dev->onPinStateChanged.connect([&](uint64_t /*pin*/, bool /*state*/) {
-        ++pinSignalCount;
+    // Use a shared_ptr to avoid stack-use-after-return when lambda outlives function
+    auto pinSignalCount = std::make_shared<std::atomic<int>>(0);
+    int connectionId = dev->onPinStateChanged.connect([pinSignalCount](uint64_t /*pin*/, bool /*state*/) {
+        ++(*pinSignalCount);
     });
 
     // open() creates _serialDriveThread, starts it, and blocks until
@@ -362,6 +363,9 @@ static void test_open_close()
 
     // isOpen() should now be true.
     assert(dev->isOpen());
+
+    // Disconnect signal before closing to prevent callbacks after close
+    dev->onPinStateChanged.disconnect(connectionId);
 
     // close() shuts down _serialDriveThread and deletes it.
     dev->close();
