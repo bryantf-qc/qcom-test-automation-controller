@@ -137,9 +137,8 @@ qtac::ByteArray TACPIC32CXCoder::encode(const qtac::ByteArray& encodeMe, const A
         {
             std::string pinStr = std::to_string(arguments.at(1).asUInt32());
 
-            // Prepend '0' if the pin string is fewer than 3 characters
-            // (matches original: "if (argumentStr.size() < 3) argumentStr = '0' + argumentStr").
-            if (pinStr.size() < 3)
+            // Pad with leading zeros to make at least 3 characters
+            while (pinStr.size() < 3)
                 pinStr = "0" + pinStr;
 
             const qtac::ByteArray stateStr = argumentToBoolString(arguments.at(0));
