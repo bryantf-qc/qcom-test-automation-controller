@@ -153,41 +153,31 @@ TACWindow::~TACWindow()
 
 void TACWindow::openPort(const QByteArray& portName)
 {
-    qDebug() << "TACWindow::openPort() - starting, port:" << portName;
-
     // Ensure device list is current for all device types.
-    qDebug() << "TACWindow::openPort() - updating device lists";
     FTDIDevice::updateAlpacaDevices();
     PSOCDevice::updateAlpacaDevices();
     PIC32CXDevice::updateAlpacaDevices();
 
-    qDebug() << "TACWindow::openPort() - finding device";
     AlpacaDevice dev = _AlpacaDevice::findAlpacaDevice(
         qtac::ByteArray(portName.constData(), portName.size()));
 
     if (!dev)
     {
-        qDebug() << "TACWindow::openPort() - device not found!";
         _ui->_statusBar->showMessage("Device not found: " + QString(portName));
         return;
     }
-
-    qDebug() << "TACWindow::openPort() - device found, board type:" << dev->debugBoardType();
 
     // Create and inject the concrete drive thread based on board type.
     switch (dev->debugBoardType())
     {
     case ePSOC:
-        qDebug() << "TACWindow::openPort() - creating PSOC drive thread";
         _driveThread = new qtac::TACPSOCDriveThread(dev->hash());
         break;
     case ePIC32CXAuto:
-        qDebug() << "TACWindow::openPort() - creating PIC32CX drive thread";
         _driveThread = new qtac::TACPIC32CXDriveThread(dev->hash());
         break;
     case eFTDI:
     default:
-        qDebug() << "TACWindow::openPort() - creating FTDI drive thread";
         _driveThread = new qtac::TACLiteDriveThread(dev->hash());
         break;
     }
@@ -203,7 +193,6 @@ void TACWindow::openPort(const QByteArray& portName)
     twCrashLog(("  platformID: " + std::to_string(static_cast<int>(dev->platformID()))).c_str());
     twCrashLog(("  description: " + dev->description().toStdString()).c_str());
 
-    qDebug() << "TACWindow::openPort() - creating bridge";
     // Create the bridge and connect its Qt signals BEFORE calling open().
     // The drive thread's run() fires onDeviceConnected (via setupConnected) immediately
     // after startRunning() — which can happen before open() even returns. If the bridge
@@ -227,10 +216,8 @@ void TACWindow::openPort(const QByteArray& portName)
     connect(_bridge, &TACDeviceBridge::logLine,
             this,    &TACWindow::onLogLine);
 
-    qDebug() << "TACWindow::openPort() - calling dev->open()";
     if (!dev->open())
     {
-        qDebug() << "TACWindow::openPort() - open() failed:" << QString::fromStdString(dev->getLastError().toStdString());
         twCrashLog(("open() failed: " + dev->getLastError().toStdString()).c_str());
         _ui->_statusBar->showMessage("Failed to open: " + QString(portName)
             + " — " + QString::fromStdString(dev->getLastError().toStdString()));
@@ -239,7 +226,6 @@ void TACWindow::openPort(const QByteArray& portName)
         bool threadExited = false;
         if (_driveThread && _driveThread->isRunning())
         {
-            qDebug() << "TACWindow::openPort() - waiting for thread to exit";
             // Wait up to 500ms for the thread to exit
             for (int i = 0; i < 50 && _driveThread->isRunning(); ++i)
             {
@@ -248,7 +234,6 @@ void TACWindow::openPort(const QByteArray& portName)
 
             if (_driveThread->isRunning())
             {
-                qDebug() << "TACWindow::openPort() - thread still running after wait, detaching and leaking";
                 _driveThread->detachThread();
                 // Don't delete a detached thread - just leak it
                 dev->setDriveThread(nullptr);
@@ -257,7 +242,6 @@ void TACWindow::openPort(const QByteArray& portName)
             }
             else
             {
-                qDebug() << "TACWindow::openPort() - thread exited cleanly";
                 threadExited = true;
             }
         }
@@ -281,8 +265,6 @@ void TACWindow::openPort(const QByteArray& portName)
         return;
     }
 
-    qDebug() << "TACWindow::openPort() - device opened successfully";
-
     // Remember this port for "open last device" feature.
     _prefs.setLastDevice(QString(portName));
 
@@ -292,8 +274,6 @@ void TACWindow::openPort(const QByteArray& portName)
     _ui->_deviceStatusLabel->setText("Opening…");
     _ui->_connectButton->setEnabled(false);
     _ui->_disconnectButton->setEnabled(true);
-
-    qDebug() << "TACWindow::openPort() - complete";
 }
 
 QByteArray TACWindow::portName() const
@@ -341,18 +321,14 @@ void TACWindow::shutDown()
 
 void TACWindow::onConnectClicked()
 {
-    qDebug() << "TACWindow::onConnectClicked() - opening device selection dialog";
     TACDeviceSelection dlg(this);
     int result = dlg.exec();
-    qDebug() << "TACWindow::onConnectClicked() - dialog result:" << result;
     if (result != QDialog::Accepted)
         return;
 
     QByteArray port = dlg.selectedPortName();
-    qDebug() << "TACWindow::onConnectClicked() - selected port:" << port;
     if (port.isEmpty())
     {
-        qDebug() << "TACWindow::onConnectClicked() - port is empty, returning";
         return;
     }
 
@@ -363,7 +339,6 @@ void TACWindow::onConnectClicked()
         return;
     }
 
-    qDebug() << "TACWindow::onConnectClicked() - calling openPort(" << port << ")";
     if (inUse())
         TACApplication::createTACWindow()->openPort(port);
     else

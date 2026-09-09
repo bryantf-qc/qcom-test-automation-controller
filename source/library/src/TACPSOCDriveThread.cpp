@@ -87,7 +87,6 @@ bool TACPSOCDriveThread::openSerialDevice()
 {
     // Look up the port by name, then fall back to serial number.
     const std::string portNameStr = _portName.toStdString();
-    writeLogLine("TACPSOCDriveThread::openSerialDevice: looking for port " + portNameStr);
 
     for (const auto& info : SerialPortInfo::availablePorts())
     {
@@ -95,7 +94,6 @@ bool TACPSOCDriveThread::openSerialDevice()
             info.serialNumber().toStdString() == portNameStr)
         {
             _tacPortInfo = info;
-            writeLogLine("TACPSOCDriveThread::openSerialDevice: found port " + info.portName().toStdString());
             break;
         }
     }
@@ -117,7 +115,6 @@ bool TACPSOCDriveThread::openSerialDevice()
     // Wire the readyRead callback so readSerialData() knows when data arrived.
     _serialPort->onReadyRead = [this]() { _readyRead = true; };
 
-    writeLogLine("TACPSOCDriveThread::openSerialDevice: calling SerialPort::open()");
     if (!_serialPort->open())
     {
         std::ostringstream oss;
@@ -128,8 +125,6 @@ bool TACPSOCDriveThread::openSerialDevice()
         _serialPort.reset();
         return false;
     }
-
-    writeLogLine("TACPSOCDriveThread::openSerialDevice: SerialPort::open() succeeded");
 
     setSerialNumber(_tacPortInfo.serialNumber());
     setPortName(qtac::ByteArray(_tacPortInfo.portName().toStdString()));

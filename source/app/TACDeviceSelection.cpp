@@ -87,17 +87,11 @@ void TACDeviceSelection::accept()
     if (!sel.isEmpty())
     {
         _selectedPort = sel.first()->text().toLatin1();
-        qDebug() << "TACDeviceSelection::accept() - selected port:" << _selectedPort;
-    }
-    else
-    {
-        qDebug() << "TACDeviceSelection::accept() - no items selected";
     }
 
     if (_selectedPort.isEmpty())
     {
         // Don't accept if nothing is selected
-        qDebug() << "TACDeviceSelection::accept() - _selectedPort is empty, not accepting";
         // Clear closing flag, reconnect and restart timer since we're not accepting
         _closing = false;
         connect(_timer, &QTimer::timeout, this, &TACDeviceSelection::refreshDevices);
@@ -105,7 +99,6 @@ void TACDeviceSelection::accept()
         return;
     }
 
-    qDebug() << "TACDeviceSelection::accept() - calling QDialog::accept()";
     QDialog::accept();
 }
 
