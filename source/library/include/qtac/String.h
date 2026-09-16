@@ -83,6 +83,7 @@ public:
 	unsigned int toUInt(bool* ok = nullptr, int base = 10) const;
 	long long toLongLong(bool* ok = nullptr, int base = 10) const;
 	unsigned long long toULongLong(bool* ok = nullptr, int base = 10) const;
+	double toDouble(bool* ok = nullptr) const;
 
 	// --- Case conversion ---
 	String toUpper() const;
@@ -90,6 +91,7 @@ public:
 
 	// --- Trimming ---
 	String trimmed() const;
+	String simplified() const;
 
 	// --- Search ---
 	bool contains(const String& str, bool caseSensitive = true) const;
@@ -103,6 +105,7 @@ public:
 
 	// --- Substrings ---
 	String left(int len) const;
+	String right(int len) const;
 	String mid(int position, int len = -1) const;
 
 	// --- Split ---

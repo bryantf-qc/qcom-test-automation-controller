@@ -53,5 +53,5 @@ constexpr HashType kSetPinCommandHash               {computeHashStr("SetPin")};
 
 // PIC32CX hashes
 constexpr HashType kPIC32CXClearBufferHash          {computeHashStr("echo 1")};
-// kPIC32CXVersionCommandHash == kVersionCommandHash (both "Version")
+constexpr HashType kPIC32CXVersionCommandHash       {computeHashStr("*IDN?")};
 constexpr HashType kPIC32CXSetPinCommandHash        {computeHashStr("CONF:DIG:ON")};

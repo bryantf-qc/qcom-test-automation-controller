@@ -75,6 +75,17 @@ public:
 
     std::thread::id threadId() const { return _thread.get_id(); }
 
+    // Block until the drive thread exits.  Caller must have already called
+    // stopRunning() (or shutDown()) to signal the thread to stop.
+    // Use this instead of relying on ~DriveThread() to join, so the join
+    // happens before any derived-class destructors run and free resources
+    // (e.g. _serialPort) that the thread may still be accessing.
+    void joinThread()
+    {
+        if (_thread.joinable())
+            _thread.join();
+    }
+
     // Detach rather than join — use only when the drive thread calls close() from
     // within run() itself, where a join would deadlock.
     void detachThread()

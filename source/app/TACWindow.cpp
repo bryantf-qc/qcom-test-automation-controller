@@ -57,6 +57,7 @@
 #include <QUrl>
 
 #include <cstdio>
+#include <thread>
 extern FILE* gCrashLog;
 static inline void twCrashLog(const char* msg)
 {
@@ -258,25 +259,50 @@ void TACWindow::shutDown()
 
     _pinFrame->clearDevice();
 
-    _bridge->device()->close();
+    // Disconnect all bridge signals now so the drive thread cannot post new
+    // Qt callbacks after this point.
+    _bridge->disconnectSignals();
 
     closeLogFile();
 
-    // Shut down and delete the drive thread.
-    if (_driveThread)
-    {
-        _driveThread->shutDown();
-        delete _driveThread;
-        _driveThread = nullptr;
-    }
-
-    delete _bridge;
-    _bridge = nullptr;
-
+    // Update UI immediately — do not wait for the drive thread to exit.
     _ui->_deviceStatusLabel->setText("Disconnected");
     _ui->_connectButton->setEnabled(true);
     _ui->_disconnectButton->setEnabled(false);
     setWindowTitle(kWindowTitle.arg(""));
+
+    TACDeviceBridge*      bridge      = _bridge;
+    qtac::TACDriveThread* driveThread = _driveThread;
+    _bridge      = nullptr;
+    _driveThread = nullptr;
+
+    // Signal the drive thread to stop (non-blocking, returns immediately).
+    // The thread will exit within one waitForReadyRead timeout (~10 ms).
+    if (driveThread)
+        driveThread->stopRunning();
+
+    // Close the device synchronously on the UI thread.  This resets the
+    // device's internal drive-thread pointers so it is safe to reconnect
+    // immediately after shutDown() returns.  Because stopRunning() was
+    // called above, the shutDown() calls inside close() are no-ops
+    // (stopRunning() returns false → no join), so this is instant.
+    bridge->device()->close();
+
+    // Orphan the bridge (remove from TACWindow parent) before scheduling
+    // deletion so Qt's parent-child cleanup does not double-delete it.
+    // deleteLater() lets any already-queued Qt events that reference the
+    // bridge be processed before the bridge is destroyed.
+    bridge->setParent(nullptr);
+    bridge->deleteLater();
+
+    // Join the drive thread on a background thread so the UI stays
+    // responsive while the serial port winds down (~10 ms in practice).
+    // Join *before* delete so derived-class destructors (which free the
+    // serial port and other resources) only run after the thread has exited.
+    std::thread([driveThread]() {
+        driveThread->joinThread();   // wait for run() to return
+        delete driveThread;          // safe: thread is done, no more resource access
+    }).detach();
 }
 
 // ---------------------------------------------------------------------------

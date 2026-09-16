@@ -217,6 +217,21 @@ unsigned long long Variant::toULongLong(bool* ok) const
     }
 }
 
+double Variant::toDouble(bool* ok) const
+{
+    if (ok) *ok = true;
+    switch (_type) {
+    case Type::Double:    return _data.d;
+    case Type::Bool:      return _data.b ? 1.0 : 0.0;
+    case Type::Int:       return static_cast<double>(_data.i);
+    case Type::UInt:      return static_cast<double>(_data.u);
+    case Type::LongLong:  return static_cast<double>(_data.ll);
+    case Type::ULongLong: return static_cast<double>(_data.ull);
+    case Type::String:    return strPtr(&_data)->toDouble(ok);
+    default:              if (ok) *ok = false; return 0.0;
+    }
+}
+
 qtac::String Variant::toString() const
 {
     switch (_type) {

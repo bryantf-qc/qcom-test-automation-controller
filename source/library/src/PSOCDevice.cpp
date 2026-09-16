@@ -56,6 +56,7 @@ static constexpr int kOpenInitMs{100};
 
 uint32_t PSOCDevice::updateAlpacaDevices()
 {
+    std::lock_guard<std::recursive_mutex> lock(_mutex);
     for (auto& dev : _alpacaDevices)
         if (dev->debugBoardType() == ePSOC)
             dev->setActive(false);

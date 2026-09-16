@@ -165,6 +165,7 @@ bool FTDIDevice::programDevice(AlpacaDevice alpacaDevice,
 
 uint32_t FTDIDevice::updateAlpacaDevices()
 {
+	std::lock_guard<std::recursive_mutex> lock(_mutex);
 	uint32_t deviceCount = _FTDIChipset::getDeviceCount();
 
 	for (uint32_t deviceIndex = 0; deviceIndex < deviceCount; ++deviceIndex)

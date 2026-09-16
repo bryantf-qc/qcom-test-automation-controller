@@ -56,6 +56,12 @@
 
 #include <atomic>
 #include <cassert>
+#undef assert
+#define assert(expr) \
+    do { if (!(expr)) { \
+        std::fprintf(stderr, "Assertion failed: %s, file %s, line %d\n", #expr, __FILE__, __LINE__); \
+        std::exit(1); \
+    } } while(0)
 #include <chrono>
 #include <cstdio>
 #include <functional>

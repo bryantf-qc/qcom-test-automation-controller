@@ -79,6 +79,7 @@ public:
 	unsigned int toUInt(bool* ok = nullptr) const;
 	long long toLongLong(bool* ok = nullptr) const;
 	unsigned long long toULongLong(bool* ok = nullptr) const;
+	double toDouble(bool* ok = nullptr) const;
 	qtac::String toString() const;
 	ByteArray toByteArray() const;
 

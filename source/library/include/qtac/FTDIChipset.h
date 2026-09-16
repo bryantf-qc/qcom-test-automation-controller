@@ -81,7 +81,6 @@ public:
 	void reset()
 	{
 		_active = false;
-		_ftdiChipsetList.clear();
 	}
 
 	bool active() const { return _active; }

@@ -175,6 +175,19 @@ unsigned long long String::toULongLong(bool* ok, int base) const
 	}
 }
 
+double String::toDouble(bool* ok) const
+{
+	try {
+		size_t pos = 0;
+		double result = std::stod(_data, &pos);
+		if (ok) *ok = (pos == _data.size());
+		return result;
+	} catch (...) {
+		if (ok) *ok = false;
+		return 0.0;
+	}
+}
+
 // --- Case conversion ---
 
 String String::toUpper() const
@@ -202,6 +215,29 @@ String String::trimmed() const
 	if (start == std::string::npos) return String("");
 	auto end = _data.find_last_not_of(" \t\n\r\f\v");
 	return String(_data.substr(start, end - start + 1));
+}
+
+String String::simplified() const
+{
+	std::string result;
+	result.reserve(_data.size());
+	bool inSpace = true; // treat leading whitespace as already-seen
+	for (size_t i = 0; i < _data.size(); ++i) {
+		unsigned char c = static_cast<unsigned char>(_data[i]);
+		if (std::isspace(c)) {
+			if (!inSpace) {
+				result += ' ';
+				inSpace = true;
+			}
+		} else {
+			result += static_cast<char>(c);
+			inSpace = false;
+		}
+	}
+	// trim trailing space added by the loop
+	if (!result.empty() && result.back() == ' ')
+		result.pop_back();
+	return String(std::move(result));
 }
 
 // --- Search ---
@@ -272,6 +308,14 @@ bool String::endsWith(char ch, bool caseSensitive) const
 String String::left(int len) const
 {
 	return String(_data.substr(0, static_cast<size_t>(len)));
+}
+
+String String::right(int len) const
+{
+	if (len <= 0) return String("");
+	size_t ulen = static_cast<size_t>(len);
+	if (ulen >= _data.size()) return *this;
+	return String(_data.substr(_data.size() - ulen));
 }
 
 String String::mid(int position, int len) const

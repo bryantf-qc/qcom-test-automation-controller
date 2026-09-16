@@ -42,7 +42,7 @@
 // Static members
 // -----------------------------------------------------------------------
 
-std::mutex     _AlpacaDevice::_mutex;
+std::recursive_mutex  _AlpacaDevice::_mutex;
 AlpacaDevices  _AlpacaDevice::_alpacaDevices;
 
 // -----------------------------------------------------------------------
@@ -56,7 +56,7 @@ _AlpacaDevice::~_AlpacaDevice()
 void _AlpacaDevice::getAlpacaDevices(AlpacaDevices& alpacaDevices, DebugBoardType debugBoardTypeFilter)
 {
 	alpacaDevices.clear();
-	std::lock_guard<std::mutex> lock(_mutex);
+	std::lock_guard<std::recursive_mutex> lock(_mutex);
 
 	for (auto& alpacaDevice : _alpacaDevices)
 	{
@@ -72,7 +72,7 @@ void _AlpacaDevice::getAlpacaDevices(AlpacaDevices& alpacaDevices, DebugBoardTyp
 uint32_t _AlpacaDevice::updateAlpacaDevices()
 {
 	_alpacaDevices.clear();
-	std::lock_guard<std::mutex> lock(_mutex);
+	std::lock_guard<std::recursive_mutex> lock(_mutex);
 	// Concrete device classes (FTDIDevice) call their own updateAlpacaDevices()
 	// and push into _alpacaDevices. See FTDIDevice::updateAlpacaDevices().
 	return static_cast<uint32_t>(_alpacaDevices.size());
@@ -80,6 +80,7 @@ uint32_t _AlpacaDevice::updateAlpacaDevices()
 
 AlpacaDevice _AlpacaDevice::findAlpacaDevice(HashType hash)
 {
+	std::lock_guard<std::recursive_mutex> lock(_mutex);
 	for (const auto& dev : _alpacaDevices)
 		if (dev->_hash == hash)
 			return dev;
@@ -88,6 +89,7 @@ AlpacaDevice _AlpacaDevice::findAlpacaDevice(HashType hash)
 
 AlpacaDevice _AlpacaDevice::findAlpacaDevice(const qtac::ByteArray& portName)
 {
+	std::lock_guard<std::recursive_mutex> lock(_mutex);
 	qtac::ByteArray searchTerm = portName.toLower();
 	for (const auto& dev : _alpacaDevices)
 	{
@@ -101,6 +103,7 @@ AlpacaDevice _AlpacaDevice::findAlpacaDevice(const qtac::ByteArray& portName)
 
 AlpacaDevice _AlpacaDevice::findAlpacaDeviceBySerialNumber(const qtac::ByteArray& serialNumber, bool usePartial)
 {
+	std::lock_guard<std::recursive_mutex> lock(_mutex);
 	qtac::ByteArray testSerial = serialNumber.toLower();
 	for (const auto& dev : _alpacaDevices)
 	{
@@ -113,6 +116,7 @@ AlpacaDevice _AlpacaDevice::findAlpacaDeviceBySerialNumber(const qtac::ByteArray
 
 AlpacaDevice _AlpacaDevice::findAlpacaDeviceByDescription(const qtac::ByteArray& description, bool usePartial)
 {
+	std::lock_guard<std::recursive_mutex> lock(_mutex);
 	qtac::ByteArray testDesc = description.toLower();
 	for (const auto& dev : _alpacaDevices)
 	{
@@ -125,6 +129,7 @@ AlpacaDevice _AlpacaDevice::findAlpacaDeviceByDescription(const qtac::ByteArray&
 
 AlpacaDevice _AlpacaDevice::findAlpacaDeviceByUSBDescriptor(const qtac::ByteArray& descriptor, bool usePartial)
 {
+	std::lock_guard<std::recursive_mutex> lock(_mutex);
 	qtac::ByteArray testDescriptor = descriptor.toLower();
 	for (const auto& dev : _alpacaDevices)
 	{

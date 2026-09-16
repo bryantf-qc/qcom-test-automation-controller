@@ -56,6 +56,7 @@ static constexpr unsigned int kOpenThreadDelay{300};
 
 uint32_t PIC32CXDevice::updateAlpacaDevices()
 {
+    std::lock_guard<std::recursive_mutex> lock(_mutex);
     for (auto& dev : _alpacaDevices)
         if (dev->debugBoardType() == ePIC32CXAuto)
             dev->setActive(false);

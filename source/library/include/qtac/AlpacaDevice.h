@@ -178,7 +178,7 @@ public:
 	void onDeviceDisconnect();
 
 protected:
-	static std::mutex     _mutex;
+	static std::recursive_mutex _mutex;
 	static AlpacaDevices  _alpacaDevices;
 
 	bool            _active{false};
