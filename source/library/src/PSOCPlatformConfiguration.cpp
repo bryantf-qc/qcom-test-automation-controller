@@ -674,7 +674,7 @@ qtac::String _PSOCPlatformConfiguration::i2cSlaveTabName(const PSOCI2CSlave& sla
 {
     // Format: "KTS1622EUAATR (0x20)" etc.
     return psocSlaveToString(slave._variant) + " (0x"
-         + qtac::String::number(static_cast<uint64_t>(slave._slaveAddress), 16) + ")";
+         + qtac::String::number(static_cast<unsigned long long>(slave._slaveAddress), 16) + ")";
 }
 
 void _PSOCPlatformConfiguration::refreshSlaveConfig()

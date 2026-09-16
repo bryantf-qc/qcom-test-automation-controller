@@ -58,7 +58,7 @@ struct STM32PinData
 
     static HashType makeSTM32Hash(PinID gpioIndex)
     {
-        return strHash(qtac::String::number(static_cast<uint64_t>(gpioIndex)));
+        return strHash(qtac::String::number(static_cast<unsigned long long>(gpioIndex)));
     }
 
     HashType        _hash{0};
