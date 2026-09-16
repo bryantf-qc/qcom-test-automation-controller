@@ -509,7 +509,7 @@ static void test_command_hash_constants()
 
     // PIC32CX hashes
     assert(arrayHash(qtac::ByteArray("echo 1"))            == kPIC32CXClearBufferHash);
-    assert(arrayHash(qtac::ByteArray("*IDN?"))             == kVersionCommandHash);  // Use kVersionCommandHash as kPIC32CXVersionCommandHash is not defined
+    assert(arrayHash(qtac::ByteArray("*IDN?"))             == kPIC32CXVersionCommandHash);
     assert(arrayHash(qtac::ByteArray("CONF:DIG:ON"))       == kPIC32CXSetPinCommandHash);
 }
 
