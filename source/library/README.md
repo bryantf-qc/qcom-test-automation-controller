@@ -1,6 +1,8 @@
 # qtac-core Library
 
-Qt-free replacement types for the QTAC project. This static library provides drop-in alternatives to common Qt classes used throughout QCommonConsole and TACDev, eliminating the Qt dependency from core library code.
+Qt-free C++11 static library providing drop-in replacements for Qt types and
+a complete hardware abstraction stack (FTDI, PSoC, PIC32CX, STM32/BugHopper V2).
+Used by `TACDev.dll` and `qtac-app` to eliminate the Qt dependency from core logic.
 
 ## Directory Structure
 
@@ -15,16 +17,61 @@ source/library/
 │   ├── Variant.h              # QVariant replacement
 │   ├── Map.h                  # QMap replacement (header-only template)
 │   ├── List.h                 # QList replacement (header-only template)
-│   └── Pair.h                 # QPair replacement (header-only alias)
-├── src/
-│   ├── qtac_core.cpp          # Library version info
-│   ├── String.cpp             # String method definitions
-│   ├── StringList.cpp         # StringList + String::split() definitions
-│   └── Variant.cpp            # Variant type conversion definitions
-└── CMakeLists.txt             # Builds qtac-core static library
+│   ├── Pair.h                 # QPair replacement (header-only alias)
+│   ├── Signal.h               # Lightweight callback (replaces Qt signals)
+│   ├── AlpacaDevice.h         # Device registry base
+│   ├── AlpacaScript.h         # Script engine (Qt-free port)
+│   ├── FTDIDevice.h           # FTDI/TACLite device
+│   ├── FTDIPlatformConfiguration.h
+│   ├── PSOCDevice.h           # PSoC TAC device
+│   ├── PSOCPlatformConfiguration.h
+│   ├── PIC32CXDevice.h        # PIC32CX TAC device
+│   ├── PIC32CXPlatformConfiguration.h
+│   ├── STM32Device.h          # BugHopper V2 (HID/hidapi)
+│   ├── STM32PlatformConfiguration.h
+│   ├── Notification.h         # Notification value type
+│   └── ...                    # Protocol stack headers (TACLite, TACPSOC, etc.)
+└── src/
+    ├── qtac_core.cpp          # Library version info
+    ├── String.cpp
+    ├── StringList.cpp
+    ├── Variant.cpp
+    ├── AlpacaDevice.cpp
+    ├── FTDIDevice.cpp
+    ├── FTDIPlatformConfiguration.cpp
+    ├── PSOCDevice.cpp / PSOCPlatformConfiguration.cpp
+    ├── PIC32CXDevice.cpp / PIC32CXPlatformConfiguration.cpp
+    ├── STM32Device.cpp / STM32PlatformConfiguration.cpp
+    ├── TACSTM32*.cpp          # STM32 protocol stack (Coder/Protocol/Command/DriveThread)
+    ├── TACLite*.cpp           # FTDI protocol stack
+    ├── TACPSOC*.cpp           # PSoC protocol stack
+    ├── TACPIC32CX*.cpp        # PIC32CX protocol stack
+    └── ...
 ```
 
-## Classes
+## Building
+
+`qtac-core` is built as part of the root CMake project — it cannot be built
+standalone. See [`source/BUILD.md`](../BUILD.md) for full instructions.
+
+```bat
+cmake -S C:\ProdTools\qcom-test-automation-controller ^
+      -B build\Release ^
+      -DCMAKE_PREFIX_PATH=C:\Qt\6.11.1\msvc2022_64 ^
+      -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+cmake --build build\Release --target qtac-core
+```
+
+### External dependencies (fetched automatically by CMake)
+
+| Dependency | Source | Usage |
+|------------|--------|-------|
+| `hidapi` | FetchContent (GitHub) | HID transport for STM32/BugHopper V2 |
+| `libserialport` | FetchContent (GitHub sigrokproject) | Serial port for PSoC/PIC32CX |
+| `boost` | vendored in `third-party/` | `boost::json` for tcnf/devicelist parsing |
+
+## Qt-free Types
 
 ### `qtac::ByteArray` (replaces `QByteArray`)
 Header-only. Wraps `std::string` with Qt-compatible API: append, prepend, insert, remove, hex/base64 encoding, numeric conversions, split, search, and comparison.
@@ -41,74 +88,24 @@ UTF-8 string class wrapping `std::string`. Key features:
 - **`startsWith()`, `endsWith()`, `contains()`, `indexOf()`** — search
 
 ### `qtac::StringList` (replaces `QStringList`)
-Wraps `std::vector<String>`. Provides:
-- **`join(separator)`** — concatenate with delimiter
-- **`filter(pattern)`** — substring filter
-- Append, insert, remove, contains, indexOf
+Wraps `std::vector<String>`. Provides `join()`, `filter()`, append, insert, remove, contains, indexOf.
 
 ### `qtac::Variant` (replaces `QVariant`)
 Uses `std::variant` internally. Stores: `bool`, `int`, `unsigned int`, `long long`, `unsigned long long`, `double`, `String`, `ByteArray`.
-- **`toString()`, `toInt()`, `toBool()`, `toDouble()`** — type conversions
-- **`value<T>()`** — template accessor
-- **`isValid()`, `type()`** — type introspection
 
 ### `qtac::Map<K, V>` (replaces `QMap`)
-Header-only template wrapping `std::map`. Provides:
-- **`value(key, defaultValue)`** — safe lookup with fallback
-- **`insert()`, `remove()`, `contains()`**
-- **`keys()`, `values()`** — extract key/value vectors
+Header-only template wrapping `std::map`. Provides `value()`, `insert()`, `remove()`, `contains()`, `keys()`, `values()`.
 
 ### `qtac::List<T>` (replaces `QList`)
-Header-only template wrapping `std::vector`. Provides:
-- **`append()`, `prepend()`, `insert()`, `removeAt()`**
-- **`at()`** — bounds-checked access
-- **`contains()`, `indexOf()`**
-- **`first()`, `last()`, `takeAt()`, `takeFirst()`, `takeLast()`**
+Header-only template wrapping `std::vector`. Provides `append()`, `prepend()`, `insert()`, `removeAt()`, `at()`, `contains()`, `indexOf()`, `first()`, `last()`.
 
-### `qtac::Pair<T1, T2>` (replaces `QPair`)
-Type alias for `std::pair<T1, T2>` plus `makePair()` helper.
-
-## Building
-
-```bash
-cmake -S source/library -B source/library/build
-cmake --build source/library/build
-```
-
-Requires C++20. No external dependencies.
-
-## Testing
-
-```bash
-cmake -S source/test -B source/test/build
-cmake --build source/test/build
-
-# Run tests
-source/test/build/Debug/test_bytearray
-source/test/build/Debug/test_string
-source/test/build/Debug/test_containers
-```
-
-## Usage
-
-```cpp
-#include <qtac/String.h>
-#include <qtac/List.h>
-#include <qtac/Map.h>
-#include <qtac/Variant.h>
-
-using namespace qtac;
-
-String msg = String("Device %1 returned code %2").arg(name).arg(code);
-List<String> items = msg.split(' ');
-Map<String, Variant> config;
-config.insert(String("timeout"), Variant(5000));
-```
+### `qtac::Notification`
+Value type carrying a message, severity level, id, timestamp (`std::chrono::system_clock`), and occurrence count. Defined in `namespace qtac` to avoid collision with `winrt::Windows::UI::Notifications::Notification`.
 
 ## Design Principles
 
 1. **API compatibility** — Method names and signatures match Qt equivalents for easy migration
-2. **No Qt headers** — Zero Qt includes; pure C++20
+2. **No Qt headers** — Zero Qt includes; pure C++11
 3. **Header-only where possible** — Templates (Map, List, Pair) and ByteArray are header-only
 4. **Namespace isolation** — Everything in `namespace qtac` to avoid conflicts during migration
 5. **Minimal footprint** — Only implements methods actually used in the codebase

@@ -5,7 +5,7 @@
 | Tool | Version | Notes |
 |------|---------|-------|
 | Visual Studio Build Tools | 2022 | MSVC x64 toolchain (`cl.exe`) |
-| CMake | 3.16+ | Must be on `PATH` |
+| CMake | 3.22+ | Must be on `PATH` |
 | Ninja | any | Must be on `PATH` |
 | Qt | 6.11.1 | Installed to `C:\Qt\6.11.1\msvc2022_64\` |
 | FTDI CDM driver SDK | 2.12.36+ | See §FTDI Bootstrap below |
@@ -15,31 +15,21 @@
 ## FTDI Bootstrap (one-time)
 
 The build requires `ftd2xx.lib` and `ftd2xx.dll` placed under `__Builds\x64\`.
-
-### Option A — Extract from the vendored zip (no separate repo needed)
-
-```powershell
-cd C:\ProdTools\qtac-refactor
-.\extract_ftdi.ps1
-```
-
-This extracts `third-party\CDM-v2.12.36.20-WHQL-Certified.zip` and copies:
-
-```
-__Builds\x64\Debug\lib\ftd2xx.lib
-__Builds\x64\Debug\bin\ftd2xx.dll
-__Builds\x64\Release\lib\ftd2xx.lib
-__Builds\x64\Release\bin\ftd2xx.dll
-```
-
-### Option B — Copy from an existing `qcom-test-automation-controller` checkout
+Copy them from an existing checkout or from your FTDI CDM driver installation:
 
 ```powershell
-cd C:\ProdTools\qtac-refactor
-.\copy_ftdi.ps1
+# From an existing qcom-test-automation-controller checkout at the default location:
+Copy-Item C:\ProdTools\qcom-test-automation-controller\__Builds\x64\Release\lib\ftd2xx.lib `
+          __Builds\x64\Release\lib\ -Force
+Copy-Item C:\ProdTools\qcom-test-automation-controller\__Builds\x64\Release\bin\ftd2xx.dll `
+          __Builds\x64\Release\bin\ -Force
+Copy-Item C:\ProdTools\qcom-test-automation-controller\__Builds\x64\Debug\lib\ftd2xx.lib `
+          __Builds\x64\Debug\lib\  -Force
+Copy-Item C:\ProdTools\qcom-test-automation-controller\__Builds\x64\Debug\bin\ftd2xx.dll `
+          __Builds\x64\Debug\bin\  -Force
 ```
 
-Copies the same four files from `C:\ProdTools\qcom-test-automation-controller\__Builds\x64\`.
+Or copy directly from the FTDI CDM driver package (`amd64\ftd2xx.lib`, `ftd2xx.dll`).
 
 ---
 
@@ -48,12 +38,12 @@ Copies the same four files from `C:\ProdTools\qcom-test-automation-controller\__
 ### Quick build (recommended) — PowerShell
 
 ```powershell
-cd C:\ProdTools\qtac-refactor
+cd C:\ProdTools\qcom-test-automation-controller
 .\build_app.ps1
 ```
 
 Performs:
-1. Loads the MSVC x64 environment from `vcvars64.bat`
+1. Locates VS2022 via `vswhere.exe` and loads the MSVC x64 environment
 2. Adds Qt `bin\` to `PATH`
 3. `cmake -S . -B build\Release -DCMAKE_PREFIX_PATH=<Qt> -G Ninja -DCMAKE_BUILD_TYPE=Release`
 4. `cmake --build build\Release --target qtac-app`
@@ -69,7 +59,7 @@ build\Release\TACDev.lib   (import lib for callers)
 ### Quick build — batch file
 
 ```bat
-cd C:\ProdTools\qtac-refactor
+cd C:\ProdTools\qcom-test-automation-controller
 build_app.bat
 ```
 
@@ -81,7 +71,7 @@ Same steps as the PowerShell script; build log is saved to `build_out.txt`.
 call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
 set PATH=C:\Qt\6.11.1\msvc2022_64\bin;%PATH%
 
-cd C:\ProdTools\qtac-refactor
+cd C:\ProdTools\qcom-test-automation-controller
 
 cmake -S . -B build\Release ^
       -DCMAKE_PREFIX_PATH=C:\Qt\6.11.1\msvc2022_64 ^
@@ -101,13 +91,25 @@ cmake --build build\Release --target qtac-core     # Qt-free static lib only
 
 ---
 
+## Rebuild (incremental, no reconfigure)
+
+When only source files change and the build is already configured:
+
+```powershell
+cd C:\ProdTools\qcom-test-automation-controller
+.\rebuild_library.ps1    # rebuilds qtac-core + TACDev + qtac-app (Debug)
+.\rebuild_tests.ps1      # rebuilds test_coders_commands, test_hardware_ftdi, test_hardware_psoc (Debug)
+```
+
+---
+
 ## Deploy (qtac-app.exe)
 
 After building, run the deploy script to copy Qt runtime DLLs and device
 configuration files alongside the executable:
 
 ```powershell
-cd C:\ProdTools\qtac-refactor
+cd C:\ProdTools\qcom-test-automation-controller
 .\deploy_app.ps1
 ```
 
@@ -115,6 +117,7 @@ This copies into `build\Release\`:
 - `ftd2xx.dll` — FTDI runtime
 - `devicelist.json` — device catalogue
 - `*.tcnf` — device configuration files
+- `DefaultScript.txt` — default AlpacaScript
 - All Qt DLLs/plugins (via `windeployqt`)
 
 ### Running qtac-app
@@ -180,24 +183,35 @@ int main(void) {
 
 ---
 
-## Running the TACDev API Test
+## Running Tests
 
-A standalone test binary exercises the C API against a live device.
+### Non-hardware tests (no device required)
 
 ```bat
-cd C:\ProdTools\qtac-refactor
-build_tacdev_test.bat
+cd C:\ProdTools\qcom-test-automation-controller\build\Release
+test_bytearray.exe
+test_coders_commands.exe
+test_containers.exe
+test_platform_configs.exe
+test_signal.exe
+test_string.exe
+test_stringutils.exe
 ```
 
-Or manually:
+### Hardware integration tests (device must be connected)
 
 ```bat
-call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
+cd C:\ProdTools\qcom-test-automation-controller\build\Release
+test_hardware_ftdi.exe    # requires a TACLite (FTDI) device
+test_hardware_psoc.exe    # requires a PSoC TAC device
+test_tacdev_api.exe       # requires any supported TAC device
+```
 
-cmake -S source\test -B build_test_api -G Ninja -DCMAKE_BUILD_TYPE=Release --fresh
-cmake --build build_test_api --target test_tacdev_api
+### Rebuild tests only
 
-build_test_api\test_tacdev_api.exe
+```powershell
+cd C:\ProdTools\qcom-test-automation-controller
+.\rebuild_tests.ps1
 ```
 
 ---
@@ -205,18 +219,18 @@ build_test_api\test_tacdev_api.exe
 ## Project Structure (relevant to this guide)
 
 ```
-C:\ProdTools\qtac-refactor\
+C:\ProdTools\qcom-test-automation-controller\
 ├── CMakeLists.txt              root — adds all subdirectories
-├── build_app.ps1               PowerShell build script
+├── build_app.ps1               PowerShell build script (uses vswhere)
 ├── build_app.bat               Batch build script
+├── rebuild_library.ps1         Incremental rebuild of library + app targets
+├── rebuild_tests.ps1           Incremental rebuild of test targets
 ├── deploy_app.ps1              windeployqt + copy configs
-├── copy_ftdi.ps1               copy FTDI files from sibling repo
-├── extract_ftdi.ps1            extract FTDI files from vendored zip
 ├── __Builds\x64\               ftd2xx.lib / ftd2xx.dll (bootstrapped)
 ├── configurations\             devicelist.json, *.tcnf
-├── third-party\                nlohmann/json, libserialport, FTDI zip
+├── third-party\                boost, hidapi, libserialport, nlohmann/json
 ├── source\
-│   ├── library\                qtac-core (Qt-free static lib)
+│   ├── library\                qtac-core Qt-free static lib
 │   ├── libraries\qt-adapter\   Qt ↔ qtac-core bridge (static lib)
 │   ├── app\                    qtac-app Qt6 GUI source
 │   ├── tacdev\                 TACDev.dll C API source + TACDev.h
@@ -231,8 +245,9 @@ C:\ProdTools\qtac-refactor\
 | Symptom | Likely cause | Fix |
 |---------|-------------|-----|
 | `cmake` can't find Qt | Qt not on `CMAKE_PREFIX_PATH` | Pass `-DCMAKE_PREFIX_PATH=C:\Qt\6.11.1\msvc2022_64` |
-| `ftd2xx.lib not found` | FTDI not bootstrapped | Run `extract_ftdi.ps1` or `copy_ftdi.ps1` |
+| `ftd2xx.lib not found` | FTDI not bootstrapped | Copy from CDM driver package or sibling checkout |
 | `ftd2xx.dll not found` at runtime | DLL not deployed | Run `deploy_app.ps1` or copy manually |
 | App opens but shows no devices | `devicelist.json` missing | Run `deploy_app.ps1` or copy `configurations\` files |
 | `cl.exe` not found | MSVC env not loaded | Use `build_app.ps1`/`build_app.bat` which load `vcvars64.bat` |
 | Build fails with `LINK : fatal error LNK1181` | Stale build dir | Delete `build\Release` and reconfigure |
+| hidapi not found | FetchContent network issue | Ensure internet access during first configure |
