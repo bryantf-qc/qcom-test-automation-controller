@@ -70,7 +70,6 @@
     "fileVersion": 65,
     "modification_date": "Tue Jul 29 11:10:35 2025",
     "name": "Molokai MTP",
-    "pineVersion": 2,
     "pins": [
         {
             "bus": "A",
@@ -603,22 +602,6 @@
             "moveable": false,
             "name": "Device Info",
             "ordinal": 1,
-            "user_tab": false,
-            "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "Fusion",
-            "ordinal": 3,
-            "user_tab": false,
-            "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "Terminal",
-            "ordinal": 4,
             "user_tab": false,
             "visible": true
         }

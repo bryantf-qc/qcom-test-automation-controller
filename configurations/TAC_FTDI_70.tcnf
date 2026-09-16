@@ -68,10 +68,8 @@
     "creation_date": "Thu Sep 25 13:06:42 2025",
     "description": "ALPACA-LITE HAWI CDP",
     "fileVersion": 15,
-    "min_firmware_version": 15,
     "modification_date": "Thu Oct 23 15:21:39 2025",
     "name": "Hawi CDP",
-    "pineVersion": 1,
     "pins": [
         {
             "bus": "A",
@@ -606,25 +604,8 @@
             "ordinal": 1,
             "user_tab": false,
             "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "Fusion",
-            "ordinal": 3,
-            "user_tab": false,
-            "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "Terminal",
-            "ordinal": 4,
-            "user_tab": false,
-            "visible": true
         }
     ],
     "usb_descriptor": "ALPACA-LITE HAWI CDP",
-    "variables": [
-    ]
+    "variables": []
 }

@@ -1,87 +1,445 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause
+
 name: CMake Build
 
 on: [push, pull_request]
 
 jobs:
+  fetch-ftdi-linux:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Cache FTDI archive on Linux
+      id: cache-ftdi-linux
+      uses: actions/cache@v5
+      with:
+        path: third-party/libftd2xx-linux-x86_64-1.4.33.tgz
+        key: ftdi-linux-1.4.33
+
+    - name: Download FTDI archive on Linux
+      if: steps.cache-ftdi-linux.outputs.cache-hit != 'true'
+      run: |
+        curl --ssl-no-revoke "https://web.archive.org/web/20250822044524/https://ftdichip.com/wp-content/uploads/2025/03/libftd2xx-linux-x86_64-1.4.33.tgz" -o third-party/libftd2xx-linux-x86_64-1.4.33.tgz
+
+  fetch-ftdi-windows:
+    runs-on: windows-2022
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Cache FTDI archive on Windows
+      id: cache-ftdi-windows
+      uses: actions/cache@v5
+      with:
+        path: third-party\CDM-v2.12.36.4-WHQL-Certified.zip
+        key: ftdi-windows-2.12.36.4
+
+    - name: Download FTDI archive on Windows
+      if: steps.cache-ftdi-windows.outputs.cache-hit != 'true'
+      shell: pwsh
+      run: curl --ssl-no-revoke "https://web.archive.org/web/20250820134143/https://ftdichip.com/wp-content/uploads/2023/09/CDM-v2.12.36.4-WHQL-Certified.zip" -o "third-party\CDM-v2.12.36.4-WHQL-Certified.zip"
+
+  fetch-ftdi-windows-arm64:
+    runs-on: windows-11-arm
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Cache FTDI archive for ARM64
+      id: cache-ftdi-windows-arm64
+      uses: actions/cache@v5
+      with:
+        path: third-party\CDM-v2.12.36.20-for-ARM64-WHQL-Certified.zip
+        key: ftdi-windows-arm64-2.12.36.20
+
+    - name: Download FTDI archive for ARM64
+      if: steps.cache-ftdi-windows-arm64.outputs.cache-hit != 'true'
+      shell: pwsh
+      run: curl --ssl-no-revoke "https://web.archive.org/web/20250821211500/https://ftdichip.com/wp-content/uploads/2025/03/CDM-v2.12.36.20-for-ARM64-WHQL-Certified.zip" -o "third-party\CDM-v2.12.36.20-for-ARM64-WHQL-Certified.zip"
+
+  build-docs:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: '3.x'
+
+    - name: Install doc build dependencies
+      run: pip install -r docs/tools/requirements.txt
+
+    - name: Build HTML documentation
+      working-directory: docs/tools
+      run: python generate-docs.py
+
+    - name: Upload docs artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: qtac-docs-html
+        path: docs/tools/_build/html
+        if-no-files-found: error
+
   build-linux:
+    needs: [fetch-ftdi-linux, build-docs]
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-22.04, ubuntu-latest]
         qt_version: ['6.9.2', '6.10.0']
-        build_type: [Debug, Release]
+        config_root: ['/var/lib/qcom/data/QTAC/configurations']
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y python3-pip wget libxkbcommon-x11-0 x11-common libxcb-xinerama0-dev build-essential libgl1-mesa-dev mesa-common-dev uuid-dev libpulse-dev
+        sudo apt-get install -y python3-pip wget libxkbcommon-x11-0 x11-common libxcb-xinerama0-dev build-essential libgl1-mesa-dev mesa-common-dev uuid-dev libpulse-dev ninja-build libudev-dev
+
+    - name: Cache Qt installation on Linux
+      uses: actions/cache@v5
+      with:
+        path: ${{ matrix.qt_version }}/gcc_64
+        key: ${{ matrix.os }}-qt-${{ matrix.qt_version }}
 
     - name: Install aqtinstall
       run: pip install aqtinstall
 
     - name: Install Qt ${{ matrix.qt_version }} on ${{ matrix.os }}
       run: |
-        # Install base Qt first
-        aqt install-qt linux desktop ${{ matrix.qt_version }} linux_gcc_64
-        # Then install required modules
         aqt install-qt linux desktop ${{ matrix.qt_version }} linux_gcc_64 -m qtmultimedia qtserialport
-        echo "QT_ROOT_DIR=$HOME/work/qcom-test-automation-controller/qcom-test-automation-controller/${{ matrix.qt_version }}/gcc_64" >> $GITHUB_ENV
-        echo "$HOME/work/qcom-test-automation-controller/qcom-test-automation-controller/${{ matrix.qt_version }}/gcc_64/bin" >> $GITHUB_PATH
+        echo "QTBIN=$HOME/work/qcom-test-automation-controller/qcom-test-automation-controller/${{ matrix.qt_version }}/gcc_64/bin" >> $GITHUB_ENV
 
-    - name: Cache Qt installation on Linux
-      uses: actions/cache@v4
+    - name: Restore FTDI archive on Linux
+      uses: actions/cache/restore@v5
       with:
-        path: ${{ env.QT_ROOT_DIR }}
-        key: ${{ runner.os }}-qt-${{ matrix.qt_version }}
+        path: third-party/libftd2xx-linux-x86_64-1.4.33.tgz
+        key: ftdi-linux-1.4.33
+        
+    - name: Build
+      run: ./build.sh
 
-    - name: Configure CMake for ${{ matrix.build_type }}
+    - name: Generate devicelist.json
       run: |
-        mkdir build
-        cd build
-        cmake .. -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        configRoot="${{ matrix.config_root }}"
+        sudo mkdir -p "$configRoot"
+        sudo chown "$(id -u):$(id -g)" "$configRoot"
+        cp configurations/*.tcnf "$configRoot/"
+        "__Builds/Linux/Release/bin/UpdateDeviceList" "dir=$configRoot"
+        cp "$configRoot/devicelist.json" "configurations/devicelist.json"
 
-    - name: Build with ${{ matrix.build_type }}
-      run: cmake --build build --config ${{ matrix.build_type }}
+    - name: Install patchelf
+      run: sudo apt-get install -y patchelf
+
+    - name: Download built docs artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: qtac-docs-html
+        path: docs-html
+
+    - name: Replace docs source with built HTML
+      run: |
+        rm -rf docs
+        mv docs-html docs
+
+    - name: Package QTAC
+      run: |
+        chmod +x packaging/linux/package_QTAC.sh
+        ./packaging/linux/package_QTAC.sh
+
+    - name: Upload installer artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: QTAC-${{ matrix.os }}-qt${{ matrix.qt_version }}.deb
+        path: packaging/linux/build/*.deb
+        if-no-files-found: error
 
   build-windows:
+    needs: [fetch-ftdi-windows, build-docs]
     runs-on: windows-2022
     strategy:
+      fail-fast: false
       matrix:
         qt_version: ['6.9.2', '6.10.0']
-        build_type: [Debug, Release]
+        config_root: ['C:\ProgramData\Qualcomm\QTAC\configurations']
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Install Python dependencies
       shell: pwsh
       run: pip install aqtinstall
 
+    - name: Cache Qt installation on Windows
+      uses: actions/cache@v5
+      with:
+        path: C:\Qt\${{ matrix.qt_version }}\msvc2022_64
+        key: ${{ runner.os }}-qt-${{ matrix.qt_version }}
+
     - name: Install Qt ${{ matrix.qt_version }} for MSVC
       shell: pwsh
       run: |
         aqt install-qt windows desktop ${{ matrix.qt_version }} win64_msvc2022_64 --outputdir "C:\Qt" -m qtserialport qtmultimedia
+        echo "QTBIN=C:\Qt\${{ matrix.qt_version }}\msvc2022_64\bin" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-        $qtRoot = "C:\Qt\${{ matrix.qt_version }}\msvc2022_64"
-        echo "QT_ROOT_DIR=$qtRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        echo "$qtRoot\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-    - name: Cache Qt installation on Windows
-      uses: actions/cache@v4
+    - name: Restore FTDI archive on Windows
+      uses: actions/cache/restore@v5
       with:
-        path: ${{ env.QT_ROOT_DIR }}
-        key: ${{ runner.os }}-qt-${{ matrix.qt_version }}
+        path: third-party\CDM-v2.12.36.4-WHQL-Certified.zip
+        key: ftdi-windows-2.12.36.4
 
-    - name: Configure CMake for ${{ matrix.build_type }}
+    - name: Install .NET Framework 4.8 Developer Pack
+      shell: pwsh
+      run: choco install netfx-4.8-devpack -y
+
+    - name: Build
+      shell: cmd
+      run: build.bat
+
+    - name: Generate devicelist.json
       shell: pwsh
       run: |
-        mkdir build
-        cd build
-        cmake .. -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR\lib\cmake"
+        $configRoot = "${{ matrix.config_root }}"
+        New-Item -ItemType Directory -Force -Path $configRoot | Out-Null
+        Copy-Item "configurations\*.tcnf" $configRoot -Force
+        & "__Builds\x64\Release\bin\UpdateDeviceList.exe" "dir=$configRoot"
+        Copy-Item (Join-Path $configRoot "devicelist.json") "configurations\devicelist.json" -Force
 
-    - name: Build with ${{ matrix.build_type }}
+    - name: Download built docs artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: qtac-docs-html
+        path: docs-html
+
+    - name: Replace docs source with built HTML
       shell: pwsh
-      run: cmake --build build --config ${{ matrix.build_type }}
+      run: |
+        Remove-Item -Recurse -Force docs
+        Move-Item docs-html docs
+
+    - name: Build installer (QTAC-windows-x64.exe)
+      shell: pwsh
+      run: .\packaging\windows\build-installer.ps1
+
+    - name: Upload installer artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: QTAC-windows-x64-qt${{ matrix.qt_version }}
+        path: __Builds\installer\QTAC-windows-x64.exe
+        if-no-files-found: error
+
+  build-windows-arm64:
+    needs: [fetch-ftdi-windows-arm64, build-docs]
+    runs-on: windows-11-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        qt_version: ['6.9.2', '6.10.0']
+        config_root: ['C:\ProgramData\Qualcomm\QTAC\configurations']
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Install Python dependencies
+      shell: pwsh
+      run: pip install aqtinstall
+
+    - name: Cache Qt installation for ARM64
+      uses: actions/cache@v5
+      with:
+        path: C:\Qt\${{ matrix.qt_version }}\msvc2022_arm64
+        key: windows-arm64-qt-${{ matrix.qt_version }}
+
+    - name: Install Qt ${{ matrix.qt_version }} for MSVC ARM64
+      shell: pwsh
+      run: |
+        aqt install-qt windows_arm64 desktop ${{ matrix.qt_version }} win64_msvc2022_arm64 --outputdir "C:\Qt" --autodesktop -m qtserialport qtmultimedia
+        echo "QTBIN=C:\Qt\${{ matrix.qt_version }}\msvc2022_arm64\bin" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+    - name: Restore FTDI archive for ARM64
+      uses: actions/cache/restore@v5
+      with:
+        path: third-party\CDM-v2.12.36.20-for-ARM64-WHQL-Certified.zip
+        key: ftdi-windows-arm64-2.12.36.20
+
+    - name: Build
+      shell: cmd
+      run: build.bat
+
+    - name: Generate devicelist.json
+      shell: pwsh
+      run: |
+        $configRoot = "${{ matrix.config_root }}"
+        New-Item -ItemType Directory -Force -Path $configRoot | Out-Null
+        Copy-Item "configurations\*.tcnf" $configRoot -Force
+        & "__Builds\ARM64\Release\bin\UpdateDeviceList.exe" "dir=$configRoot"
+        Copy-Item (Join-Path $configRoot "devicelist.json") "configurations\devicelist.json" -Force
+
+    - name: Download built docs artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: qtac-docs-html
+        path: docs-html
+
+    - name: Replace docs source with built HTML
+      shell: pwsh
+      run: |
+        Remove-Item -Recurse -Force docs
+        Move-Item docs-html docs
+
+    - name: Build installer (QTAC-windows-arm64.exe)
+      shell: pwsh
+      run: .\packaging\windows\build-installer.ps1
+
+    - name: Upload installer artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: QTAC-windows-arm64-qt${{ matrix.qt_version }}
+        path: __Builds\installer\QTAC-windows-arm64.exe
+        if-no-files-found: error
+
+  publish-release-linux:
+    name: Publish release (Linux)
+    if: github.ref_type == 'tag'
+    needs: build-linux
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - name: Verify tag is on main branch
+      id: verify_main
+      run: |
+        set -euo pipefail
+        git fetch origin main --quiet
+        if git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+          echo "Tagged commit $GITHUB_SHA is on main; proceeding with release."
+          echo "on_main=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "Tagged commit $GITHUB_SHA is NOT on main; skipping release publish."
+          echo "on_main=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Download Linux build artifacts
+      if: steps.verify_main.outputs.on_main == 'true'
+      uses: actions/download-artifact@v4
+      with:
+        pattern: QTAC-*.deb
+        path: release-artifacts
+
+    - name: Flatten Linux artifacts into a single directory
+      if: steps.verify_main.outputs.on_main == 'true'
+      run: |
+        set -euo pipefail
+        mkdir -p release-assets
+        find release-artifacts -mindepth 2 -type f -print0 | while IFS= read -r -d '' f; do
+          artifact_name="$(basename "$(dirname "$f")")"
+          ext="${f##*.}"
+          if [[ "$artifact_name" == *.$ext ]]; then
+            target="$artifact_name"
+          else
+            target="${artifact_name}.${ext}"
+          fi
+          cp "$f" "release-assets/$target"
+        done
+        echo "Linux release assets to upload:"
+        ls -la release-assets
+
+    - name: Ensure GitHub Release exists and upload Linux assets
+      if: steps.verify_main.outputs.on_main == 'true'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: ${{ github.ref_name }}
+      run: |
+        set -euo pipefail
+        if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          gh release create "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$TAG" \
+            --generate-notes || \
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1
+        fi
+        gh release upload "$TAG" release-assets/* \
+          --repo "$GITHUB_REPOSITORY" \
+          --clobber
+
+  publish-release-windows:
+    name: Publish release (Windows)
+    if: github.ref_type == 'tag'
+    needs: [build-windows, build-windows-arm64]
+    runs-on: windows-2022
+    permissions:
+      contents: write
+    steps:
+    - name: Checkout repository (full history)
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - name: Verify tag is on main branch
+      id: verify_main
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+        git fetch origin main --quiet
+        git merge-base --is-ancestor "$env:GITHUB_SHA" origin/main
+        if ($LASTEXITCODE -eq 0) {
+          Write-Host "Tagged commit $env:GITHUB_SHA is on main; proceeding with release."
+          "on_main=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        } else {
+          Write-Host "Tagged commit $env:GITHUB_SHA is NOT on main; skipping release publish."
+          "on_main=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        }
+
+    - name: Download Windows build artifacts
+      if: steps.verify_main.outputs.on_main == 'true'
+      uses: actions/download-artifact@v4
+      with:
+        pattern: QTAC-windows-*
+        path: release-artifacts
+
+    - name: Flatten Windows artifacts into a single directory
+      if: steps.verify_main.outputs.on_main == 'true'
+      shell: pwsh
+      run: |
+        New-Item -ItemType Directory -Force -Path release-assets | Out-Null
+        Get-ChildItem release-artifacts -Directory | ForEach-Object {
+          $artifactName = $_.Name
+          Get-ChildItem $_.FullName -File -Recurse | ForEach-Object {
+            $target = Join-Path 'release-assets' ("$artifactName$($_.Extension)")
+            Copy-Item $_.FullName $target -Force
+          }
+        }
+        Write-Host "Windows release assets to upload:"
+        Get-ChildItem release-assets | Format-Table -AutoSize
+
+    - name: Ensure GitHub Release exists and upload Windows assets
+      if: steps.verify_main.outputs.on_main == 'true'
+      shell: pwsh
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: ${{ github.ref_name }}
+      run: |
+        $ErrorActionPreference = 'Stop'
+        gh release view "$env:TAG" --repo "$env:GITHUB_REPOSITORY" 2>$null
+        if ($LASTEXITCODE -ne 0) {
+          gh release create "$env:TAG" `
+            --repo "$env:GITHUB_REPOSITORY" `
+            --title "$env:TAG" `
+            --generate-notes
+          if ($LASTEXITCODE -ne 0) {
+            # Another job likely created it first; verify it now exists.
+            gh release view "$env:TAG" --repo "$env:GITHUB_REPOSITORY"
+          }
+        }
+        $assets = Get-ChildItem release-assets -File | ForEach-Object { $_.FullName }
+        gh release upload "$env:TAG" $assets `
+          --repo "$env:GITHUB_REPOSITORY" `
+          --clobber

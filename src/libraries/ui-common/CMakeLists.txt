@@ -1,3 +1,6 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause
+
 include(${CMAKE_SOURCE_DIR}/src/libraries/qcommon/Common.cmake)
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -17,12 +20,11 @@ qt_add_library(${LIBRARY_NAME} STATIC
     CommandButton.cpp CommandButton.h
     CustomValidator.cpp CustomValidator.h
     HoverAwareQWindow.cpp HoverAwareQWindow.h HoverAwareQWindow.ui
-    I2CWidget.cpp I2CWidget.h I2CWidget.ui
+
     MediaPlaybackFrame.cpp MediaPlaybackFrame.h MediaPlaybackFrame.ui
     NotificationWidget.cpp NotificationWidget.h NotificationWidget.ui
     ProgressDialog.cpp ProgressDialog.h ProgressDialog.ui
     TACFrame.cpp TACFrame.h TACFrame.ui
-    TerminalWidget.cpp TerminalWidget.h TerminalWidget.ui
     UIGlobalLib.h
     UILib.cpp UILib.h
     UserWidget.cpp UserWidget.h UserWidget.ui
@@ -32,7 +34,7 @@ qt_add_library(${LIBRARY_NAME} STATIC
 )
 
 set_target_properties(${LIBRARY_NAME} PROPERTIES
-    VERSION ALPACA_VERSION
+    VERSION ${QTAC_VERSION}
 )
 
 target_include_directories(${LIBRARY_NAME} PUBLIC
@@ -41,13 +43,13 @@ target_include_directories(${LIBRARY_NAME} PUBLIC
 )
 
 target_link_directories(${LIBRARY_NAME} PRIVATE
-    ${CMAKE_SOURCE_DIR}/__Builds/x64/$<CONFIG>/lib
+    ${STATIC_LIBPATH}
 )
 
 target_compile_definitions(${LIBRARY_NAME} PUBLIC
     QTAC_STATIC
     QT_DEPRECATED_WARNINGS
-    QT_DISABLE_DEPRECATED_UP_TO=0x060600
+    QT_DISABLE_DEPRECATED_UP_TO=0x060900
     $<$<CONFIG:Debug>:DEBUG;_DEBUG>
     $<$<NOT:$<CONFIG:Debug>>:NDEBUG;_NDEBUG>
 )

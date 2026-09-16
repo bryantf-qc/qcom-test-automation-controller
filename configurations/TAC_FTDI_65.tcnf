@@ -93,10 +93,9 @@
     "description": "MTP8975 (Hawi) FTDI IO",
     "fileVersion": 26,
     "form_dimension": "561,866",
-    "min_firmware_version": 16,
+    "supportedFirmwareVer": [16],
     "modification_date": "Tue Aug 19 14:22:49 2025",
     "name": "Hawi MTP8975",
-    "pineVersion": 2,
     "pins": [
         {
             "bus": "A",
@@ -629,22 +628,6 @@
             "moveable": false,
             "name": "Device Info",
             "ordinal": 1,
-            "user_tab": false,
-            "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "Fusion",
-            "ordinal": 3,
-            "user_tab": false,
-            "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "Terminal",
-            "ordinal": 4,
             "user_tab": false,
             "visible": true
         }

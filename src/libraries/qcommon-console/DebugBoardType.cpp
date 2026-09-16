@@ -1,28 +1,5 @@
-// Confidential and Proprietary Qualcomm Technologies, Inc.
-
-// NO PUBLIC DISCLOSURE PERMITTED:  Please report postings of this software on public servers or websites
-// to: DocCtrlAgent@qualcomm.com.
-
-// RESTRICTED USE AND DISCLOSURE:
-// This software contains confidential and proprietary information and is not to be used, copied, reproduced, modified
-// or distributed, in whole or in part, nor its contents revealed in any manner, without the express written permission
-// of Qualcomm Technologies, Inc.
-
-// Qualcomm is a trademark of QUALCOMM Incorporated, registered in the United States and other countries. All
-// QUALCOMM Incorporated trademarks are used with permission.
-
-// This software may be subject to U.S. and international export, re-export, or transfer laws.  Diversion contrary to U.S.
-// and international law is strictly prohibited.
-
-// Qualcomm Technologies, Inc.
-// 5775 Morehouse Drive
-// San Diego, CA 92121 U.S.A.
-// Copyright 2024 Qualcomm Technologies, Inc.
-// All rights reserved.
-// Qualcomm Technologies Confidential and Proprietary
-
-// Author:	Michael Simpson <msimpson@qti.qualcomm.com>
-//			Biswajit Roy <biswroy@qti.qualcomm.com>
+// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+// SPDX-License-Identifier: BSD-3-Clause
 
 #include "DebugBoardType.h"
 
@@ -36,18 +13,16 @@ QString debugBoardTypeToString(DebugBoardType debugBoardType)
 		case eSpiderBoard: result = "Spider Board"; break;
 		case eFTDI: result = "FTDI"; break;
 		case ePIC32CXAuto: result = "PIC32CXAuto"; break;
+		case eFT232H: result = "FT232H"; break;
+		case eSTM32: result = "STM32"; break;
 		default:
 			break;
 	}
 
 	return result;
-
 }
 
-DebugBoardType debugBoardTypeFromString
-(
-	const QString& boardString
-)
+DebugBoardType debugBoardTypeFromString(const QString& boardString)
 {
 	DebugBoardType result{eUnknownDebugBoard};
 
@@ -59,6 +34,54 @@ DebugBoardType debugBoardTypeFromString
 		result = ePIC32CXAuto;
 	else if (boardString.compare("Spider Board", Qt::CaseInsensitive) == 0)
 		result = eSpiderBoard;
+	else if (boardString.compare("FT232H", Qt::CaseInsensitive) == 0)
+		result = eFT232H;
+	else if (boardString.compare("STM32", Qt::CaseInsensitive) == 0)
+		result = eSTM32;
+
+	return result;
+}
+
+QString psocVariantToString(PSOCVariant psocVariant)
+{
+	QString result("Unknown");
+
+	switch (psocVariant)
+	{
+		case ePSOCUnknown: break;
+		case ePSOCGPIO: result = "GPIO"; break;
+		case ePSOCGPIOIIC: result = "GPIO with I2C"; break;
+		default:
+			break;
+	}
+
+	return result;
+}
+
+PSOCVariant psocVariantFromString(const QString &psocVariantString)
+{
+	PSOCVariant result{ePSOCUnknown};
+
+	if (psocVariantString.compare("GPIO", Qt::CaseInsensitive) == 0)
+		result = ePSOCGPIO;
+	else if (psocVariantString.compare("GPIO with I2C", Qt::CaseInsensitive) == 0)
+		result = ePSOCGPIOIIC;
+
+	return result;
+}
+
+QString psocSlaveToString(const PSOCIICVariant slave)
+{
+	QString result("Unknown");
+
+	switch (slave)
+	{
+	case ePSOCIICUnknown: break;
+	case eKTS1622EUAATR: result = "KTS1622EUAATR"; break;
+	case eTCA9534APWR: result = "TCA9534APWR"; break;
+	default:
+		break;
+	}
 
 	return result;
 }

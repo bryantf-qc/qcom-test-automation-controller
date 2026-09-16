@@ -78,7 +78,6 @@
     "fileVersion": 22,
     "modification_date": "Thu Mar 27 17:21:30 2025",
     "name": "Balsam SAR2230P",
-    "pineVersion": 1,
     "pins": [
         {
             "bus": "A",
@@ -611,22 +610,6 @@
             "moveable": false,
             "name": "Device Info",
             "ordinal": 1,
-            "user_tab": false,
-            "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "Fusion",
-            "ordinal": 3,
-            "user_tab": false,
-            "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "Terminal",
-            "ordinal": 4,
             "user_tab": false,
             "visible": true
         }

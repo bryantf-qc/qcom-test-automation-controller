@@ -68,10 +68,8 @@
     "creation_date": "Wed Feb 8 15:39:33 2023",
     "description": "FTDI-LITE SDX95 QMP",
     "fileVersion": 8,
-    "min_firmware_version": 15,
     "modification_date": "Fri Aug 22 18:23:00 2025",
     "name": "SDX95 QMP",
-    "pineVersion": 1,
     "pins": [
         {
             "bus": "A",
@@ -604,22 +602,6 @@
             "moveable": false,
             "name": "Device Info",
             "ordinal": 1,
-            "user_tab": false,
-            "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "Fusion",
-            "ordinal": 3,
-            "user_tab": false,
-            "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "Terminal",
-            "ordinal": 4,
             "user_tab": false,
             "visible": true
         }

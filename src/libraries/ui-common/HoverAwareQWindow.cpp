@@ -1,40 +1,5 @@
-/*
-	Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. 
-	 
-	Redistribution and use in source and binary forms, with or without
-	modification, are permitted (subject to the limitations in the
-	disclaimer below) provided that the following conditions are met:
-	 
-		* Redistributions of source code must retain the above copyright
-		  notice, this list of conditions and the following disclaimer.
-	 
-		* Redistributions in binary form must reproduce the above
-		  copyright notice, this list of conditions and the following
-		  disclaimer in the documentation and/or other materials provided
-		  with the distribution.
-	 
-		* Neither the name of Qualcomm Technologies, Inc. nor the names of its
-		  contributors may be used to endorse or promote products derived
-		  from this software without specific prior written permission.
-	 
-	NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-	GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-	HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
-	WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-	MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-	IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
-	ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-	DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-	GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-	INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
-	IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-	OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-	IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
-/*
-	Author: Biswajit Roy (biswroy@qti.qualcomm.com)
-*/
+// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+// SPDX-License-Identifier: BSD-3-Clause
 
 #include "ui_HoverAwareQWindow.h"
 #include "HoverAwareQWindow.h"
@@ -42,24 +7,29 @@
 
 #include <QClipboard>
 #include <QCursor>
+#include <QGraphicsDropShadowEffect>
 #include <QListWidget>
 #include <QMenu>
 #include <QPropertyAnimation>
-#include <QThread>
-
 
 const quint32 kNoticeTime(3000);
 const quint16 kMaxNotifications(4);
+const quint16 kMaxNotificationHistory(100);
 const QSize kLabelSize(kNotificationLabelWidth, kNotificationLabelHeight);
 
 
-HoverAwareQWindow::HoverAwareQWindow(QWidget* parent, Qt::WindowFlags flags):
-	QMainWindow(parent, flags),
+HoverAwareQWindow::HoverAwareQWindow(QWidget* parent):
+	QMainWindow(parent),
 	_ui(new Ui::HoverAwareQWindow)
 {
 	_ui->setupUi(this);
-	setWindowFlags(Qt::Popup | Qt::Window | Qt::FramelessWindowHint);
-	_ui->_notificationListContainer->setLayoutMode(QListView::Batched);
+
+	QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect(_ui->_centralWgt);
+	shadow->setBlurRadius(24);
+	shadow->setXOffset(0);
+	shadow->setYOffset(4);
+	shadow->setColor(QColor(0, 0, 0, 90));
+	_ui->_centralWgt->setGraphicsEffect(shadow);
 
 	connect(&_timer, &QTimer::timeout, this, &HoverAwareQWindow::onTimerTimeout);
 	connect(this, &HoverAwareQWindow::clearAll, this, &HoverAwareQWindow::onNotificationCleared);
@@ -68,23 +38,39 @@ HoverAwareQWindow::HoverAwareQWindow(QWidget* parent, Qt::WindowFlags flags):
 	_timer.setInterval(kNoticeTime);
 	_timer.setSingleShot(true);
 
-	_winAnim = new QPropertyAnimation(this, "windowOpacity");
+	_winAnim = new QPropertyAnimation(this, "windowOpacity", this);
+	_winAnim->setDuration(kNoticeTime);
+	_winAnim->setStartValue(1.0);
+	_winAnim->setEndValue(0.0);
+	_winAnim->setEasingCurve(QEasingCurve::OutBack);
 	connect(_winAnim, &QPropertyAnimation::finished, this, &HoverAwareQWindow::fadeOutAnimComplete);
 }
 
 HoverAwareQWindow::~HoverAwareQWindow()
 {
-	if (_winAnim != Q_NULLPTR)
-		delete _winAnim;
-
-	if (_ui != Q_NULLPTR)
-		delete _ui;
+	delete _ui;
 }
 
 void HoverAwareQWindow::insertNotification(const QString &message, const NotificationLevel notificationLevel)
 {
-	Notification newNotice(message, notificationLevel);
+	for (int i = 0; i < _notifications.size(); ++i)
+	{
+		if (_notifications.at(i).getLevel() == notificationLevel && _notifications.at(i).getMessage() == message)
+		{
+			Notification existing = _notifications.at(i);
+			existing.addOccurrence();
+
+			_notifications.removeAt(i);
+			_notifications.insert(0, existing);
+			return;
+		}
+	}
+
+	Notification newNotice(message, notificationLevel, _nextNotificationId++);
 	_notifications.insert(0, newNotice);
+
+	while (_notifications.size() > kMaxNotificationHistory)
+		_notifications.removeLast();
 }
 
 void HoverAwareQWindow::setWindowLocation(const QSize& windowSize, const QPoint& windowLoc)
@@ -93,12 +79,15 @@ void HoverAwareQWindow::setWindowLocation(const QSize& windowSize, const QPoint&
 	int mainWindowXPos = windowSize.width() + windowLoc.x();
 	int mainWindowYPos = windowSize.height() + windowLoc.y();
 
+	_winAnim->stop();
+	setWindowOpacity(1.0);
+
 	buildListView();
 
-	_ui->_notificationListContainer->setFixedSize(362, kNotificationLabelHeight*maxNotificationView());
+	_ui->_notificationListContainer->setFixedHeight(visibleListHeight());
 
 	int x = mainWindowXPos - 380;
-	int y = mainWindowYPos - kNotificationLabelHeight*maxNotificationView() - 60;
+	int y = mainWindowYPos - visibleListHeight() - 60;
 
 	QPoint loc{0,0};
 
@@ -114,47 +103,55 @@ void HoverAwareQWindow::onTimerTimeout()
 {
 	QPoint pos = QCursor::pos();
 
-	while (geometry().contains(pos) == true)
+	if (geometry().contains(pos) == false)
 	{
-		QThread::msleep(50);
-		pos = QCursor::pos();
-	}
-
-	if (_winAnim != Q_NULLPTR)
-	{
-		_winAnim->setDuration(kNoticeTime);
-		_winAnim->setStartValue(1.0);
-		_winAnim->setEndValue(0.0);
-
-		_winAnim->setEasingCurve(QEasingCurve::OutBack);
-
 		_winAnim->stop();
 		_winAnim->start();
 	}
+	else
+		setupNotificationTimer();
 }
 
 void HoverAwareQWindow::buildListView()
 {
-	quint16 notificationCount = _notifications.size();
-
-	if (notificationCount > 0 && notificationCount != _ui->_notificationListContainer->count())
+	for (const Notification& notification : _notifications)
 	{
-		_ui->_notificationListContainer->clear();
+		QString text = notification.getMessage();
 
-		for (const Notification& notification : std::as_const(_notifications))
+		if (notification.getOccurrenceCount() > 1)
+			text += QString(" (x%1)").arg(notification.getOccurrenceCount());
+
+		QListWidgetItem* lwi = new QListWidgetItem(_ui->_notificationListContainer);
+		lwi->setText(text);
+		lwi->setSizeHint(kLabelSize);
+		lwi->setData(Qt::UserRole, notification.getId());
+
+		QColor labelColor = ColorConversion::getLabelColor(notification.getLevel());
+		lwi->setBackground(QBrush(labelColor));
+
+		_ui->_notificationListContainer->addItem(lwi);
+	}
+}
+
+void HoverAwareQWindow::removeNotification(quint64 id)
+{
+	for (int i = 0; i < _notifications.size(); ++i)
+	{
+		if (_notifications.at(i).getId() == id)
 		{
-			QListWidgetItem* lwi = new QListWidgetItem(_ui->_notificationListContainer);
-			lwi->setText(notification.getMessage());
-			lwi->setSizeHint(kLabelSize);
-
-			QColor labelColor = ColorConversion::getLabelColor(notification.getLevel());
-
-			QBrush brushColor(labelColor);
-			lwi->setForeground(brushColor);
-
-			_ui->_notificationListContainer->addItem(lwi);
+			_notifications.removeAt(i);
+			break;
 		}
 	}
+
+	clearFrame();
+	buildListView();
+
+	_ui->_notificationListContainer->setFixedHeight(visibleListHeight());
+	resize(kNotificationLabelWidth, visibleListHeight() + 33);
+
+	if (_notifications.isEmpty())
+		emit clearAll();
 }
 
 void HoverAwareQWindow::onNotificationCleared()
@@ -167,18 +164,14 @@ void HoverAwareQWindow::onNotificationCleared()
 void HoverAwareQWindow::fadeOutAnimComplete()
 {
 	hide();
+	clearFrame();
 	setWindowOpacity(1.0);
 }
 
 void HoverAwareQWindow::setupNotificationTimer()
 {
-	if (_winAnim != Q_NULLPTR)
-	{
-		_winAnim->stop();
-		setWindowOpacity(1.0);
-	}
-
-	_timer.start();
+	if (_timer.isActive() == false)
+		_timer.start();
 }
 
 quint16 HoverAwareQWindow::maxNotificationView()
@@ -189,18 +182,32 @@ quint16 HoverAwareQWindow::maxNotificationView()
 		return kMaxNotifications;
 }
 
+int HoverAwareQWindow::visibleListHeight()
+{
+	quint16 visibleRows = maxNotificationView();
+	int totalHeight = 0;
+
+	for (quint16 i = 0; i < visibleRows; ++i)
+		totalHeight += _ui->_notificationListContainer->sizeHintForRow(i);
+
+	return totalHeight;
+}
+
 void HoverAwareQWindow::clearFrame()
 {
+	QListWidgetItem* wgt{Q_NULLPTR};
+
+	while ((wgt=_ui->_notificationListContainer->takeItem(0)) != Q_NULLPTR)
+		delete wgt;
+
 	_ui->_notificationListContainer->clear();
 	resize(kNotificationLabelWidth, kNotificationLabelHeight);
 }
 
-void HoverAwareQWindow::on__clearAllLabel_linkActivated(const QString &link)
+void HoverAwareQWindow::on__clearAllBtn_clicked()
 {
-	Q_UNUSED(link);
 	emit clearAll();
 }
-
 
 void HoverAwareQWindow::on__notificationListContainer_customContextMenuRequested(const QPoint &pos)
 {
@@ -212,19 +219,32 @@ void HoverAwareQWindow::on__notificationListContainer_customContextMenuRequested
 
 		if (lwi)
 		{
+			quint64 notificationId = lwi->data(Qt::UserRole).toULongLong();
+
 			QMenu menu;
 			QAction* copyAction = menu.addAction("Copy text");
+			QAction* removeAction = menu.addAction("Remove");
 			QAction* result = menu.exec(lw->mapToGlobal(pos));
 
 			if (result != Q_NULLPTR)
 			{
 				if (result == copyAction)
 				{
-					QClipboard *clipboard = QGuiApplication::clipboard();
-					if (clipboard != Q_NULLPTR)
+					for (const Notification& notification : _notifications)
 					{
-						clipboard->setText(lwi->text());
+						if (notification.getId() == notificationId)
+						{
+							QClipboard* clipboard = QGuiApplication::clipboard();
+							if (clipboard != Q_NULLPTR)
+								clipboard->setText(notification.getMessage());
+
+							break;
+						}
 					}
+				}
+				else if (result == removeAction)
+				{
+					removeNotification(notificationId);
 				}
 			}
 		}

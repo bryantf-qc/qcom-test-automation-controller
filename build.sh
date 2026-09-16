@@ -1,57 +1,310 @@
 #!/bin/bash
 
-# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. 
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted (subject to the limitations in the
-# disclaimer below) provided that the following conditions are met:
-#     
-#     * Redistributions of source code must retain the above copyright
-#         notice, this list of conditions and the following disclaimer.
-#     
-#     * Redistributions in binary form must reproduce the above
-#         copyright notice, this list of conditions and the following
-#         disclaimer in the documentation and/or other materials provided
-#         with the distribution.
-#     
-#     * Neither the name of Qualcomm Technologies, Inc. nor the names of its
-#         contributors may be used to endorse or promote products derived
-#         from this software without specific prior written permission.
-#     
-# NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-# GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-# HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
-# WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-# IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
-# ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-# GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
-# IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-# OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-# IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-# Author: Biswajit Roy (biswroy@qti.qualcomm.com)
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause
 
 set -e
 
 if [ -z "$QTBIN" ]; then
-    echo "Set QTBIN first"
+    echo ""
+    echo "ERROR: QTBIN is not set."
+    echo "       QTBIN must point to the Qt bin directory, e.g.:"
+    echo "         export QTBIN=/path/to/Qt/<version>/gcc_64/bin"
+    echo "       Then re-run this script."
+    exit 1
+fi
+
+if [ ! -d "$QTBIN" ]; then
+    echo ""
+    echo "ERROR: QTBIN directory does not exist: $QTBIN"
+    echo "       Install Qt 6.9+ via the Qt Online Installer (https://www.qt.io/download-qt-installer-oss)"
+    echo "       and include the GCC 64-bit component, then update QTBIN."
+    exit 1
+fi
+
+if ! echo "$QTBIN" | grep -q "gcc_64"; then
+    echo ""
+    echo "ERROR: QTBIN does not point to a GCC 64-bit Qt installation."
+    echo "       QTBIN is currently: $QTBIN"
+    echo "       A Linux build requires the Qt GCC 64-bit component. QTBIN must contain 'gcc_64', e.g.:"
+    echo "         export QTBIN=/path/to/Qt/<version>/gcc_64/bin"
+    exit 1
+fi
+
+if ! command -v ninja &>/dev/null; then
+    echo ""
+    echo "ERROR: ninja not found in PATH."
+    echo "       Install ninja via your package manager, e.g.:"
+    echo "         sudo apt install ninja-build"
+    echo "       Or via the Qt installer (Tools > Ninja)."
     exit 1
 fi
 
 export PATH="$QTBIN:$PATH"
 
+###############################################################################
 # Clean start
+###############################################################################
+
 rm -rf build __Builds
 
-# Debug
-cmake -S . -B build/Debug -DCMAKE_PREFIX_PATH="$(dirname "$QTBIN")" -DCMAKE_BUILD_TYPE=Debug
+###############################################################################
+# Debug Build
+###############################################################################
+
+cmake -S . -B build/Debug \
+    -DCMAKE_PREFIX_PATH="$(dirname "$QTBIN")" \
+    -DCMAKE_COLOR_DIAGNOSTICS=ON \
+    -DCMAKE_GENERATOR=Ninja \
+    -DCMAKE_BUILD_TYPE=Debug \
+    -DCMAKE_CXX_FLAGS_INIT=-DQT_QML_DEBUG
 cmake --build build/Debug
 
-# Release
-cmake -S . -B build/Release -DCMAKE_PREFIX_PATH="$(dirname "$QTBIN")" -DCMAKE_BUILD_TYPE=Release
+###############################################################################
+# Release Build
+###############################################################################
+
+cmake -S . -B build/Release \
+    -DCMAKE_PREFIX_PATH="$(dirname "$QTBIN")" \
+    -DCMAKE_COLOR_DIAGNOSTICS=ON \
+    -DCMAKE_GENERATOR=Ninja \
+    -DCMAKE_BUILD_TYPE=Release
 cmake --build build/Release
 
+###############################################################################
+# Qt Runtime Deployment
+###############################################################################
+
+echo ""
+echo "=========================================================="
+echo "Deploying Qt Runtime"
+echo "=========================================================="
+
+QT_ROOT="$(dirname "$QTBIN")"
+
+DEPLOY_BIN_DIR="__Builds/Linux/Release/bin"
+DEPLOY_LIB_DIR="__Builds/Linux/Release/lib"
+DEPLOY_PLUGIN_DIR="__Builds/Linux/Release/plugins"
+
+mkdir -p "$DEPLOY_LIB_DIR"
+mkdir -p "$DEPLOY_PLUGIN_DIR"
+
+declare -A COPIED
+
+copy_qt_dependency()
+{
+    local dep="$1"
+
+    [ -e "$dep" ] || return
+
+    case "$dep" in
+        "$QT_ROOT"/*)
+            ;;
+        *)
+            return
+            ;;
+    esac
+
+    local real_dep
+    real_dep="$(readlink -f "$dep")"
+
+    if [ -n "${COPIED[$real_dep]:-}" ]; then
+        return
+    fi
+
+    COPIED["$real_dep"]=1
+
+    echo "Copying $(basename "$real_dep")"
+
+    #
+    # Copy the real library file
+    #
+    cp -a "$real_dep" "$DEPLOY_LIB_DIR/" \
+        2>/dev/null || true
+
+    #
+    # Copy all symlinks belonging to this library
+    #
+    local base_lib
+    base_lib="$(basename "$real_dep")"
+    base_lib="${base_lib%%.so*}"
+
+    find "$QT_ROOT/lib" \
+        -maxdepth 1 \
+        -name "${base_lib}.so*" \
+        -exec cp -a {} "$DEPLOY_LIB_DIR/" \; \
+        2>/dev/null || true
+
+    #
+    # Recurse through dependencies
+    #
+    while read -r child
+    do
+        [ -e "$child" ] && copy_qt_dependency "$child"
+    done < <(
+        ldd "$real_dep" 2>/dev/null |
+        awk '/=>/ {print $3}'
+    )
+}
+
+echo ""
+echo "Scanning executables..."
+
+find "$DEPLOY_BIN_DIR" -type f -executable | while read -r exe
+do
+    echo ""
+    echo "Analyzing: $exe"
+
+    while read -r dep
+    do
+        [ -f "$dep" ] && copy_qt_dependency "$dep"
+    done < <(
+        ldd "$exe" |
+        awk '/=>/ {print $3}'
+    )
+done
+
+###############################################################################
+# Deploy Qt Plugins
+###############################################################################
+
+echo ""
+echo "Deploying Qt plugins..."
+
+for plugin_dir in \
+    iconengines \
+    imageformats \
+    platforminputcontexts \
+    platforms \
+    platformthemes \
+    xcbglintegrations
+do
+    if [ -d "$QT_ROOT/plugins/$plugin_dir" ]; then
+
+        mkdir -p "$DEPLOY_PLUGIN_DIR/$plugin_dir"
+
+        echo "Copying plugin directory: $plugin_dir"
+
+        cp -a \
+            "$QT_ROOT/plugins/$plugin_dir/." \
+            "$DEPLOY_PLUGIN_DIR/$plugin_dir/"
+    fi
+done
+
+###############################################################################
+# Scan Qt Plugin Dependencies
+###############################################################################
+
+echo ""
+echo "Scanning Qt plugin dependencies..."
+
+find "$DEPLOY_PLUGIN_DIR" -type f -name "*.so*" | while read -r plugin
+do
+    while read -r dep
+    do
+        [ -e "$dep" ] && copy_qt_dependency "$dep"
+
+    done < <(
+        ldd "$plugin" 2>/dev/null |
+        awk '/=>/ {print $3}'
+    )
+done
+
+###############################################################################
+# Ensure Qt XCB Support Libraries Are Present
+###############################################################################
+
+echo ""
+echo "Checking for Qt XCB support libraries..."
+
+find "$QT_ROOT/lib" \
+     -maxdepth 1 \
+     -name "libQt6XcbQpa.so*" \
+     -exec cp -a {} "$DEPLOY_LIB_DIR/" \;
+
+echo "Qt XCB support libraries copied."
+
+###############################################################################
+# Copy Qt Runtime Libraries
+###############################################################################
+
+echo ""
+echo "Copying Qt runtime libraries..."
+
+find "$QT_ROOT/lib" \
+    -maxdepth 1 \
+    -name "libQt6*.so*" \
+    -exec cp -a {} "$DEPLOY_LIB_DIR/" \;
+
+echo "Qt runtime libraries copied."
+
+###############################################################################
+# Deploy ICU Libraries (extra safety)
+###############################################################################
+
+echo ""
+echo "Checking ICU libraries..."
+
+for icu_lib in \
+    libicui18n.so \
+    libicuuc.so \
+    libicudata.so
+do
+    find "$QT_ROOT/lib" -name "${icu_lib}*" 2>/dev/null | while read -r f
+    do
+        cp -a "$f" "$DEPLOY_LIB_DIR/" \
+            2>/dev/null || true
+    done
+done
+
+###############################################################################
+# Validate deployment
+###############################################################################
+
+echo ""
+echo "Checking for broken library symlinks..."
+
+BROKEN_SYMLINKS=$(find "$DEPLOY_LIB_DIR" -xtype l 2>/dev/null || true)
+
+if [ -n "$BROKEN_SYMLINKS" ]; then
+
+    echo ""
+    echo "ERROR: Broken library symlinks detected:"
+    echo "$BROKEN_SYMLINKS"
+    exit 1
+
+fi
+
+echo "No broken library symlinks detected."
+
+###############################################################################
+# Summary
+###############################################################################
+
+echo ""
+echo "=========================================================="
+echo "Qt Deployment Complete"
+echo "=========================================================="
+
+echo ""
+echo "Release Output:"
+echo "  __Builds/Linux/Release"
+
+echo ""
+echo "Libraries:"
+echo "  $DEPLOY_LIB_DIR"
+
+echo ""
+echo "Plugins:"
+echo "  $DEPLOY_PLUGIN_DIR"
+
+echo ""
+echo "Library Count:"
+find "$DEPLOY_LIB_DIR" -type f | wc -l
+
+echo ""
+echo "Plugin Count:"
+find "$DEPLOY_PLUGIN_DIR" -type f | wc -l
+
+echo ""
 echo "Check __Builds directory"

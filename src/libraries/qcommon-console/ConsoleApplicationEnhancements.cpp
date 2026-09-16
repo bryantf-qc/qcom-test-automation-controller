@@ -1,43 +1,8 @@
-/*
-	Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. 
-	 
-	Redistribution and use in source and binary forms, with or without
-	modification, are permitted (subject to the limitations in the
-	disclaimer below) provided that the following conditions are met:
-	 
-		* Redistributions of source code must retain the above copyright
-		  notice, this list of conditions and the following disclaimer.
-	 
-		* Redistributions in binary form must reproduce the above
-		  copyright notice, this list of conditions and the following
-		  disclaimer in the documentation and/or other materials provided
-		  with the distribution.
-	 
-		* Neither the name of Qualcomm Technologies, Inc. nor the names of its
-		  contributors may be used to endorse or promote products derived
-		  from this software without specific prior written permission.
-	 
-	NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-	GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-	HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
-	WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-	MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-	IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
-	ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-	DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-	GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-	INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
-	IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-	OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-	IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
-/*
-		Author: Michael Simpson (msimpson@qti.qualcomm.com)
-				Biswajit Roy (biswroy@qti.qualcomm.com)
-*/
+// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+// SPDX-License-Identifier: BSD-3-Clause
 
 #include "ConsoleApplicationEnhancements.h"
+#include "AppCore.h"
 #include "Range.h"
 
 // Qt
@@ -64,21 +29,8 @@ const QString kAppName("QTAC");
 
 QString applicationBinPath()
 {
-	QString result;
-
-#ifdef Q_OS_WIN
-	result = "C:/Program Files (x86)/Qualcomm/" + kAppName + "/";
-#endif
-
-#ifdef Q_OS_LINUX
-	result = "/opt/qcom/" + kAppName + "/bin/";
-#endif
-
-	result = QDir::cleanPath(result);
-
-	if (QDir(result).exists() == false)
-		QDir().mkpath(result);
-
+	const QString result = QDir::cleanPath(QCoreApplication::applicationDirPath())
+	                       + QDir::separator();
 	return result;
 }
 
@@ -87,7 +39,15 @@ QString applicationDataPath()
 	QString result = "../../../../configurations/";
 
 	if (QDir(result).exists() == false)
-		QDir().mkpath(result);
+		{
+			#ifdef Q_OS_WIN
+				result = "C:/ProgramData/Qualcomm/" + kAppName + "/configurations/";
+			#endif
+
+			#ifdef Q_OS_LINUX
+				result = "/var/lib/qcom/data/" + kAppName + "/configurations/";
+			#endif
+		}
 
 	return result;
 }
@@ -197,7 +157,6 @@ QString createFilenameTimeStamp()
 {
 	return QDateTime::currentDateTime().toString("_yyyy_dd_MM_HH_mm_ss");
 }
-
 
 QString killOneDrive(const QString& testPath, const QString& revertPath)
 {

@@ -51,10 +51,12 @@ QTAC is a software suite that enables users to control Qualcomm devices remotely
 | :-- | :-- | :-- |
 | **OS** | Windows / Debian | Windows 10+ / Ubuntu 22.04+ |
 | **Compiler** | [MSVC 2022](https://aka.ms/vs/17/release/vs_community.exe) / GCC | MSVC 2022 / GCC-11, G++-11, GLIBC-2.35 |
+| **Build System** | [CMake](https://cmake.org/download/) | 3.22+ |
+| **Build Tool** | [Ninja](https://ninja-build.org/) (via Qt installer, system package manager, or direct download) | 1.10+ |
 | **UI Framework** | [Qt Open-source](https://www.qt.io/download-qt-installer-oss) | 6.9.0+ |
 
 > [!NOTE]
-> Review license terms for [Visual Studio](https://visualstudio.microsoft.com/license-terms/) and [Qt](https://www.qt.io/development/download-open-source). MSVC 2022 is linked as Qt doesn't support MSVC 2026 yet.
+> Review license terms for [Visual Studio](https://visualstudio.microsoft.com/license-terms/) and [Qt](https://www.qt.io/development/download-open-source). MSVC 2022 is linked as Qt does not yet support later MSVC versions.
 
 ### Drivers
 
@@ -62,7 +64,14 @@ QTAC is a software suite that enables users to control Qualcomm devices remotely
 - **[Qualcomm USB Drivers](https://softwarecenter.qualcomm.com/catalog/item/Qualcomm_Userspace_Driver)**: To view device status.
 
 > [!NOTE]
-> FTDI libraries are installed _automatically_ during the cmake configuration step when building from source.
+> FTDI libraries are downloaded _automatically_ during the cmake configuration step when building from source.
+> If the automatic download fails (e.g. due to network restrictions), download the archive manually and place it in the `third-party/` directory before re-running cmake:
+>
+> | Platform | Archive |
+> | :-- | :-- |
+> | **Windows x64** | [`CDM-v2.12.36.4-WHQL-Certified.zip`](https://web.archive.org/web/20250820134143/https://ftdichip.com/wp-content/uploads/2023/09/CDM-v2.12.36.4-WHQL-Certified.zip) |
+> | **Windows ARM64** | [`CDM-v2.12.36.20-for-ARM64-WHQL-Certified.zip`](https://web.archive.org/web/20250821211500/https://ftdichip.com/wp-content/uploads/2025/03/CDM-v2.12.36.20-for-ARM64-WHQL-Certified.zip) |
+> | **Linux x86_64** | [`libftd2xx-linux-x86_64-1.4.33.tgz`](https://web.archive.org/web/20250822044524/https://ftdichip.com/wp-content/uploads/2025/03/libftd2xx-linux-x86_64-1.4.33.tgz) |
 
 ### Optional Software
 
@@ -83,29 +92,39 @@ git clone https://github.com/qualcomm/qcom-test-automation-controller.git
 1. **Visual Studio**: Install **Desktop development with C++** and **.NET desktop development**.
    ![Desktop development with C++](./docs/resources/qtac-msvc-2022-requirements.png)
 2. **Qt**: Install Qt 6.9+ for **MSVC 2022 64-bit**, **Qt Serial Port** and **Qt Multimedia** components.
+   For ARM64, also install the **MSVC 2022 ARM64** Qt component.
    
 > [!NOTE]
 > Installation using Qt Online Installer will require users to create a Qt account.
 3. **Environment Variable**:
+
+   **x64**:
    ```cmd
    setx QTBIN C:\Qt\<version>\msvc2022_64\bin
+   ```
+   **ARM64**:
+   ```cmd
+   setx QTBIN C:\Qt\<version>\msvc2022_arm64\bin
    ```
 
 ### Build & Usage
 
-Execute `build.bat` to generate executables:
+Execute `build.bat` to generate executables. The build targets the host architecture automatically (x64 on an x64 host, ARM64 on an ARM64 host):
 
 ```cmd
 build.bat
 ```
 
 **Build output**:
-- Debug: `__Builds\x64\Debug`
-- Release: `__Builds\x64\Release`
+- x64 Debug: `__Builds\x64\Debug`
+- x64 Release: `__Builds\x64\Release`
+- ARM64 Debug: `__Builds\ARM64\Debug`
+- ARM64 Release: `__Builds\ARM64\Release`
 
 **Usage**:
 ```cmd
 __Builds\x64\Release\QTAC.exe
+__Builds\ARM64\Release\QTAC.exe
 ```
 
 ## Linux Guide
@@ -120,13 +139,18 @@ __Builds\x64\Release\QTAC.exe
 1. **Qt Installation** (choose one):
    
    **Option A**: Qt Online Installer
-   - Install Qt 6.9+ for **GCC 64-bit** and **Qt Serial Port** component using [Qt Online Installer](https://www.qt.io/download-qt-installer-oss)
+   - Install Qt 6.9+ for **GCC 64-bit** and **Qt Serial Port** and **Qt Multimedia** components using [Qt Online Installer](https://www.qt.io/download-qt-installer-oss)
    
    **Option B**: Quick Installation via apt
    ```bash
-   sudo apt install qt6-base-dev qt6-serialport-dev
+   sudo apt install qt6-base-dev qt6-serialport-dev qt6-multimedia-dev
    ```
-2. **Runtime Dependencies**:
+2. **Build Dependencies**:
+   ```bash
+   sudo apt install libudev-dev
+   ```
+   Required by `hidapi` (used for Arduino BugHopper V2 HID support) when configuring with CMake.
+3. **Runtime Dependencies**:
    ```bash
    sudo cp udev-rules/99-QTAC-USB.rules /etc/udev/rules.d/
    sudo udevadm control --reload
@@ -145,15 +169,12 @@ Execute `build.sh` to generate executables:
 ```
 
 **Build output**:
-- Debug: `__Builds/x64/Debug`
-- Release: `__Builds/x64/Release`
-
-> [!NOTE]
-> Ensure that [make](https://www.gnu.org/software/make/) is available in your environment before building.
+- Debug: `__Builds/Linux/Debug`
+- Release: `__Builds/Linux/Release`
 
 **Usage**:
 ```bash
-./__Builds/x64/Release/QTAC
+./__Builds/Linux/Release/QTAC
 ```
 
 ## Repository Structure
@@ -174,7 +195,7 @@ Execute `build.sh` to generate executables:
 
 ## Advanced Topics
 
-- [Build Using Qt Creator](./docs/getting-started/01-Build-Using-Qt-Creator.md)
+- [Build Using Qt Creator](./docs/getting-started/02-Build-Using-Qt-Creator.md)
 - [Python API Guide](./docs/bootcamp/01-Bootcamp.md)
 
 ## Support & Contributing

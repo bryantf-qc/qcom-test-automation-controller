@@ -53,10 +53,8 @@
     "description": "Glymur Battery Enabled Device",
     "fileVersion": 55,
     "form_dimension": "582,725",
-    "min_firmware_version": 15,
     "modification_date": "Thu Jul 31 01:08:08 2025",
     "name": "Glymur Battery Enabled Device",
-    "pineVersion": 2,
     "pins": [
         {
             "bus": "A",
@@ -589,22 +587,6 @@
             "moveable": false,
             "name": "Device Info",
             "ordinal": 1,
-            "user_tab": false,
-            "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "Fusion",
-            "ordinal": 3,
-            "user_tab": false,
-            "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "Terminal",
-            "ordinal": 4,
             "user_tab": false,
             "visible": true
         }

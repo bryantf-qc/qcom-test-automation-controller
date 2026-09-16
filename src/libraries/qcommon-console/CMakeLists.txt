@@ -1,36 +1,5 @@
-# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. 
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted (subject to the limitations in the
-# disclaimer below) provided that the following conditions are met:
-#     
-#     * Redistributions of source code must retain the above copyright
-#         notice, this list of conditions and the following disclaimer.
-#     
-#     * Redistributions in binary form must reproduce the above
-#         copyright notice, this list of conditions and the following
-#         disclaimer in the documentation and/or other materials provided
-#         with the distribution.
-#     
-#     * Neither the name of Qualcomm Technologies, Inc. nor the names of its
-#         contributors may be used to endorse or promote products derived
-#         from this software without specific prior written permission.
-#     
-# NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-# GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-# HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
-# WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-# IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
-# ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-# GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
-# IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-# OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-# IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-# Author: Biswajit Roy (biswroy@qti.qualcomm.com)
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/Common.cmake)
 
@@ -39,10 +8,6 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 else()
     set(LIBRARY_NAME QCommonConsole)
 endif()
-
-qt_add_resources(QCOMMONCONSOLE_RESOURCES
-    resources/QCCResource.qrc
-)
 
 qt_add_library(${LIBRARY_NAME} STATIC
     AlpacaDefines.cpp AlpacaDefines.h
@@ -64,8 +29,10 @@ qt_add_library(${LIBRARY_NAME} STATIC
     ErrorParameter.h
     FTDIChipset.cpp FTDIChipset.h
     FTDIDevice.cpp FTDIDevice.h
+    FTDIPinData.h
     FTDIPinSet.h
     FTDIPlatformConfiguration.cpp FTDIPlatformConfiguration.h
+    FT232HPlatformConfiguration.cpp FT232HPlatformConfiguration.h
     FrameCoder.cpp FrameCoder.h
     FramePackage.h
     Notification.h
@@ -96,6 +63,9 @@ qt_add_library(${LIBRARY_NAME} STATIC
     SerialPort.cpp SerialPort.h
     SerialPortInfo.cpp SerialPortInfo.h
     SerialTableModel.h SerialTableModel.cpp
+    STM32Device.h STM32Device.cpp
+    STM32PinData.h
+    STM32PlatformConfiguration.h STM32PlatformConfiguration.cpp
     StringProof.cpp StringProof.h
     StringUtilities.cpp StringUtilities.h
     SystemInformation.h
@@ -124,13 +94,15 @@ qt_add_library(${LIBRARY_NAME} STATIC
 	private/TACPSOCCommand.h private/TACPSOCCommand.cpp
 	private/TACPSOCDriveThread.h private/TACPSOCDriveThread.cpp
 	private/TACPSOCProtocol.h private/TACPSOCProtocol.cpp
+	private/TACSTM32Coder.h private/TACSTM32Coder.cpp
+	private/TACSTM32Command.h private/TACSTM32Command.cpp
+	private/TACSTM32DriveThread.h private/TACSTM32DriveThread.cpp
+	private/TACSTM32Protocol.h private/TACSTM32Protocol.cpp
     version.h
-
-    ${QCOMMONCONSOLE_RESOURCES}
 )
 
 set_target_properties(${LIBRARY_NAME} PROPERTIES
-    VERSION ALPACA_VERSION
+    VERSION ${QTAC_VERSION}
 )
 
 QCommonConsoleSettings(${LIBRARY_NAME})
@@ -138,7 +110,7 @@ QCommonConsoleSettings(${LIBRARY_NAME})
 target_compile_definitions(${LIBRARY_NAME} PUBLIC
     QCOMMONCONSOLE_LIBRARY
     QTAC_STATIC
-    QT_DISABLE_DEPRECATED_UP_TO=0x060600
+    QT_DISABLE_DEPRECATED_UP_TO=0x060900
     $<$<CONFIG:Debug>:DEBUG;_DEBUG>
     $<$<NOT:$<CONFIG:Debug>>:NDEBUG;_NDEBUG;RELEASE>
     $<$<PLATFORM_ID:Windows>:FTD2XX_STATIC>
@@ -151,4 +123,5 @@ target_link_libraries(${LIBRARY_NAME} PUBLIC
     Qt6::SerialPort
     Qt6::Xml
     ftd2xx
+    hidapi::hidapi
 )

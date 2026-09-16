@@ -150,7 +150,6 @@
     "fileVersion": 114,
     "modification_date": "Fri Oct 25 17:18:55 2024",
     "name": "RIDE MX 4.0 Lite",
-    "pineVersion": 8,
     "pins": [
         {
             "bus": "A",
@@ -683,22 +682,6 @@
             "moveable": false,
             "name": "Device Info",
             "ordinal": 2,
-            "user_tab": false,
-            "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "I2C",
-            "ordinal": 3,
-            "user_tab": false,
-            "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "Terminal",
-            "ordinal": 4,
             "user_tab": false,
             "visible": true
         },

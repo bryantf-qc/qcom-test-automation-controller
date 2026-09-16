@@ -1,32 +1,8 @@
+// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+// SPDX-License-Identifier: BSD-3-Clause
+
 #ifndef PLATFORMCONFIGURATION_H
 #define PLATFORMCONFIGURATION_H
-// Confidential and Proprietary Qualcomm Technologies, Inc.
-
-// NO PUBLIC DISCLOSURE PERMITTED:  Please report postings of this software on public servers or websites
-// to: DocCtrlAgent@qualcomm.com.
-
-// RESTRICTED USE AND DISCLOSURE:
-// This software contains confidential and proprietary information and is not to be used, copied, reproduced, modified
-// or distributed, in whole or in part, nor its contents revealed in any manner, without the express written permission
-// of Qualcomm Technologies, Inc.
-
-// Qualcomm is a trademark of QUALCOMM Incorporated, registered in the United States and other countries. All
-// QUALCOMM Incorporated trademarks are used with permission.
-
-// This software may be subject to U.S. and international export, re-export, or transfer laws.  Diversion contrary to U.S.
-// and international law is strictly prohibited.
-
-// Qualcomm Technologies, Inc.
-// 5775 Morehouse Drive
-// San Diego, CA 92121 U.S.A.
-// Copyright 2022-2025 Qualcomm Technologies, Inc.
-// All rights reserved.
-// Qualcomm Technologies Confidential and Proprietary
-
-/*
-	Author: Biswajit Roy (biswroy@qti.qualcomm.com)
-			Michael Simpson (msimpson@qti.qualcomm.com)
-*/
 
 // QCommonConsole
 #include "QCommonConsoleGlobal.h"
@@ -44,7 +20,6 @@
 #include <QSharedPointer>
 #include <QSize>
 #include <QString>
-
 
 const int kDefaultPlatformId{99999};
 const int kDefaultFirmwareVersion{15};
@@ -81,7 +56,7 @@ public:
 
 	static void initializeDynamicPlatform();
 
-	static PlatformConfiguration createPlatformConfiguration(DebugBoardType debugBoardType, int chipCount = 1);
+	static PlatformConfiguration createPlatformConfiguration(DebugBoardType debugBoardType, int chipCount = 1, PSOCVariant psocVariant = ePSOCUnknown);
 	static PlatformConfiguration openPlatformConfiguration(const QString& filePath);
 
 	static QList<PlatformID> platformEntryIds();
@@ -122,9 +97,6 @@ public:
 	QString getFileVersion();
 	quint32 fileVersion();
 
-	QString getPineVersion();
-	void setPineVersion(quint32 pineVersion);
-
 	// Returns string version of platform type for UI elements
 	QString getPlatformString();
 
@@ -134,6 +106,8 @@ public:
 	// The function is required to update _platform value
 	// in memory after reading the string from file
 	void setPlatform(const QString& platform);
+
+	virtual PSOCVariant variant();
 
 	// Returns the id of the platform
 	PlatformID getPlatformId();
@@ -221,7 +195,6 @@ protected:
 	QString						_platformFile;
 	PlatformID					_platformId{kDefaultPlatformId};
 	quint32						_fileVersion{0};
-	quint32                     _pineVersion{1};
 	QString						_name;
 	QString						_author;
 	QString						_description;
@@ -243,7 +216,6 @@ protected:
 
 private:
 	static void initialize();
-	void copyToPineDataPath(const QString &savePath);
 
 	static USBDescriptors		_usbDescriptors;
 	static Buttons				_classicButtons;

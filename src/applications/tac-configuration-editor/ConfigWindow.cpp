@@ -1,41 +1,5 @@
-/*
-	Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. 
-	 
-	Redistribution and use in source and binary forms, with or without
-	modification, are permitted (subject to the limitations in the
-	disclaimer below) provided that the following conditions are met:
-	 
-		* Redistributions of source code must retain the above copyright
-		  notice, this list of conditions and the following disclaimer.
-	 
-		* Redistributions in binary form must reproduce the above
-		  copyright notice, this list of conditions and the following
-		  disclaimer in the documentation and/or other materials provided
-		  with the distribution.
-	 
-		* Neither the name of Qualcomm Technologies, Inc. nor the names of its
-		  contributors may be used to endorse or promote products derived
-		  from this software without specific prior written permission.
-	 
-	NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-	GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-	HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
-	WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-	MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-	IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
-	ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-	DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-	GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-	INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
-	IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-	OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-	IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
-/*
-	Author: Michael Simpson (msimpson@qti.qualcomm.com)
-			Biswajit Roy (biswroy@qti.qualcomm.com)
-*/
+// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+// SPDX-License-Identifier: BSD-3-Clause
 
 #include "ConfigWindow.h"
 
@@ -46,11 +10,11 @@
 #include "ConfigEditorApplication.h"
 #include "FTDIEditorView.h"
 #include "ManageTabsDialog.h"
-#include "PineCommandLine.h"
+#include "PSOCI2CDialog.h"
 #include "PSOCEditorView.h"
+#include "STM32EditorView.h"
 #include "TACPreviewWindow.h"
 
-// libTAC
 #include "DebugBoardType.h"
 #include "TACDefines.h"
 
@@ -65,7 +29,7 @@
 #include "ConsoleApplicationEnhancements.h"
 #include "CustomValidator.h"
 
-// QT
+// Qt
 #include <QCloseEvent>
 #include <QFileDialog>
 #include <QMessageBox>
@@ -73,15 +37,14 @@
 #include <QWhatsThis>
 #include <QWindow>
 
-
 const QByteArray kLockState{QByteArrayLiteral("lockState")};
 const QByteArray kWindowTitle{QByteArrayLiteral("TAC Configuration Editor")};
 const QByteArray kPIC32CXSerialIDLabel(QByteArrayLiteral("<html><body><p><span style=\" font-size:9pt; font-weight:600;\">Serial Number:</span></p></body></html>"));
 
-const QString kFirmware15HelpText("<html><body><p><span style=\" font-size:12pt; font-weight:600;\">v15</span></p></body></html>- Legacy firmware<br/>- Pins 48, 49 cannot be configured");
+const QString kFirmware15HelpText("<html><body><p><span style=\" font-size:12pt; font-weight:600;\">v15, v18</span></p></body></html>- Legacy firmware<br/>- Pins 48, 49 cannot be configured<br/>- v18 supports IO Expander via I2C");
 const QString kFirmware16HelpText("<html><body><p><span style=\" font-size:12pt; font-weight:600;\">v16</span></p></body></html>- Firmware for Monaco MCULess design(s)<br/>- Pins 48, 49 can be configured<br/>- Pin 49 is active high");
 const QString kFirmware17HelpText("<html><body><p><span style=\" font-size:12pt; font-weight:600;\">v17</span></p></body></html>- Firmware for Hawi and future platforms<br/>- Pin 49 can be configured. Pin 48 is unavailable<br/>- Pin 49 is active low");
-
+const QString kFirmware19HelpText("<html><body><p><span style=\" font-size:12pt; font-weight:600;\">v19</span></p></body></html>- To be updated");
 
 ConfigWindow::ConfigWindow(QWidget* parent) :
 	  QMainWindow(parent),
@@ -112,7 +75,7 @@ ConfigWindow::ConfigWindow(QWidget* parent) :
 	_metaSplitter->setSizes({1,0});
 
 	// lambda
-	connect(_actionContents, &QAction::triggered, [=]{ startLocalBrowser(docsRoot() + "/getting-started/07-TAC-Config-Editor.html");});
+	connect(_actionContents, &QAction::triggered, [=]{ startLocalBrowser(docsRoot() + "/getting-started/04-TAC-Config-Editor.html");});
 	connect(_actionAbout, &QAction::triggered, [=] { ConfigEditorApplication::appInstance()->showAboutDialog();});
 	connect(_buttonEditor, &ButtonEditor::buttonsTableUpdated, this, &ConfigWindow::onButtonsTableUpdated);
 	connect(_firmwareBtnGroup, &QButtonGroup::buttonClicked, this, &ConfigWindow::onFirmwareSelectionUpdated);
@@ -179,7 +142,6 @@ void ConfigWindow::setTACConfigFile(PlatformConfiguration tacConfigFile)
 	_buttonEditor->setPlatformConfiguration(_platformConfiguration);
 	_actionManage_Tabs->setEnabled(true);
 	_actionOpen_Script_Editor->setEnabled(true);
-	_actionPINEExport->setEnabled(true);
 	_actionSave->setEnabled(true);
 	_menuRestoreDefaults->setToolTipsVisible(true);
 
@@ -232,9 +194,6 @@ void ConfigWindow::populateFields()
 	_platformId->setEnabled(true);
 	_platformId->setText(QString::number(_platformConfiguration->getPlatformId()));
 
-	_pineVersion->setEnabled(true);
-	_pineVersion->setText(_platformConfiguration->getPineVersion());
-
 	switch (_platformConfiguration->getPlatform())
 	{
 	case ePSOC:
@@ -245,6 +204,7 @@ void ConfigWindow::populateFields()
 		break;
 
 	case eFTDI:
+	case eFT232H:
 		_editorView = new FTDIEditorView(_editorFrame);
 
 		_usbDescriptorLabel->setEnabled(true);
@@ -270,6 +230,10 @@ void ConfigWindow::populateFields()
 
 		break;
 
+	case eSTM32:
+		_editorView = new STM32EditorView(_editorFrame);
+		break;
+
 	default:
 		_editorView = Q_NULLPTR;
 		break;
@@ -288,7 +252,6 @@ void ConfigWindow::populateFields()
 	_buttonEditor->setEnabled(true);
 
 	CustomValidator platformIdValidator(_platformId, ePlatformIdValidator, _platformConfiguration->getPlatform());
-	CustomValidator pineValidator(_pineVersion, ePINEVersionValidator, _platformConfiguration->getPlatform());
 }
 
 void ConfigWindow::changeEvent(QEvent *e)
@@ -359,11 +322,7 @@ void ConfigWindow::on__actionSave_triggered()
 		else
 		{
 			// run update device list on experimental configurations
-#ifdef Q_OS_LINUX
-			QString program = "/opt/qcom/Alpaca/bin/UpdateDeviceList";
-#else
-			QString program = "UpdateDeviceList";
-#endif
+			QString program = applicationBinPath() + "UpdateDeviceList";
 
 			QStringList arguments;
 
@@ -387,11 +346,7 @@ void ConfigWindow::on__actionQuit_triggered()
 
 void ConfigWindow::on__actionBugWriter_triggered()
 {
-#ifdef Q_OS_LINUX
-	QString program = "/opt/qcom/Alpaca/bin/BugWriter";
-#else
-	QString program = "BugWriter";
-#endif
+	QString program = applicationBinPath() + "BugWriter";
 
 	QStringList arguments;
 	arguments << "product:TAC";
@@ -420,9 +375,12 @@ void ConfigWindow::enableEditorActions()
 QList<quint32> ConfigWindow::firmwareSelection()
 {
 	QList<quint32> supportedVersions;
-	QAbstractButton* btn = _firmwareBtnGroup->checkedButton();
-	if (btn != Q_NULLPTR)
+
+	for (QAbstractButton* btn : _firmwareBtnGroup->buttons())
 	{
+		if (btn->isChecked() == false)
+			continue;
+
 		bool ok(false);
 		int ver = btn->text().toInt(&ok);
 
@@ -435,23 +393,22 @@ QList<quint32> ConfigWindow::firmwareSelection()
 
 void ConfigWindow::setFirmwareSelection()
 {
-	QList<QAbstractButton*> btnList = _firmwareBtnGroup->buttons();
-	for (quint32 fwVer : _platformConfiguration->supportedFirmwareVer())
-	{
-		for (int idx(0); idx < btnList.size(); idx++)
-		{
-			bool ok(false);
-			int ver = btnList[idx]->text().toInt(&ok);
+	QList<quint32> supportedVersions = _platformConfiguration->supportedFirmwareVer();
 
-			if (ok)
-			{
-				if (ver == fwVer)
-				{
-					btnList[idx]->setChecked(true);
-					setAboutFirmware(ver);
-					break;
-				}
-			}
+	QList<QAbstractButton*> btnList = _firmwareBtnGroup->buttons();
+
+	for (QAbstractButton* btn : btnList)
+	{
+		bool ok(false);
+		int ver = btn->text().toInt(&ok);
+
+		if (ok)
+		{
+			bool checked = supportedVersions.contains(static_cast<quint32>(ver));
+			btn->setChecked(checked);
+
+			if (checked)
+				setAboutFirmware(ver);
 		}
 	}
 }
@@ -461,6 +418,7 @@ void ConfigWindow::setAboutFirmware(int fwVer)
 	switch (fwVer)
 	{
 	case 15:
+	case 18:
 		_editorView->setRowEnabled(15, false);
 		_editorView->setRowEnabled(16, false);
 		_helpLabel->setText(kFirmware15HelpText);
@@ -474,6 +432,11 @@ void ConfigWindow::setAboutFirmware(int fwVer)
 		_editorView->setRowEnabled(15, true);
 		_editorView->setRowEnabled(16, false);
 		_helpLabel->setText(kFirmware17HelpText);
+		break;
+	case 19:
+		_editorView->setRowEnabled(15, true);
+		_editorView->setRowEnabled(16, true);
+		_helpLabel->setText(kFirmware19HelpText);
 		break;
 	}
 
@@ -553,10 +516,19 @@ void ConfigWindow::on__actionNew_triggered()
 
 	if (ccd.exec() == QDialog::Accepted)
 	{
-		PlatformConfiguration platformConfig = _PlatformConfiguration::createPlatformConfiguration(ccd.getPlatform(), ccd.getChipCount());
+		PlatformConfiguration platformConfig = _PlatformConfiguration::createPlatformConfiguration(ccd.getPlatform(), ccd.getChipCount(), ccd.getPSOCVariant());
 		if (platformConfig)
 		{
-			if (_platformConfiguration != Q_NULLPTR)
+			if (platformConfig->getPlatform() == ePSOC && platformConfig->variant() == ePSOCGPIOIIC)
+			{
+				_PSOCPlatformConfiguration* psocPlatformConfig = static_cast<_PSOCPlatformConfiguration*>(platformConfig.data());
+
+				PSOCI2CDialog i2cDialog(psocPlatformConfig, this);
+				if (i2cDialog.exec() != QDialog::Accepted)
+					platformConfig = Q_NULLPTR;
+			}
+
+			if (_platformConfiguration != Q_NULLPTR && platformConfig != Q_NULLPTR)
 			{
 				ConfigWindow* w = new ConfigWindow;
 				if (w != Q_NULLPTR)
@@ -567,7 +539,8 @@ void ConfigWindow::on__actionNew_triggered()
 			}
 			else
 			{
-				setTACConfigFile(platformConfig);
+				if (platformConfig != Q_NULLPTR)
+					setTACConfigFile(platformConfig);
 			}
 		}
 		else
@@ -698,6 +671,8 @@ bool ConfigWindow::save()
 	{
 		if (_platformConfiguration != NULL)
 		{
+			_platformConfiguration->setSupportedFirmwareVer(firmwareSelection());
+
 			_platformConfiguration->save();
 
 			QFileInfo fileInfo(_platformConfiguration->filePath());
@@ -797,27 +772,6 @@ void ConfigWindow::updatePlatformId(PlatformID platformId)
 void ConfigWindow::on__actionWhatsThis_triggered()
 {
 	QWhatsThis::enterWhatsThisMode();
-}
-
-void ConfigWindow::on__actionPINEExport_triggered()
-{
-	PineCommandLine pineCmd;
-	pineCmd.invokeCli();
-}
-
-void ConfigWindow::on__pineVersion_textChanged(const QString &pineVersionString)
-{
-	if (_platformConfiguration != Q_NULLPTR)
-	{
-		if (pineVersionString != _platformConfiguration->getPineVersion())
-		{
-			bool okay;
-
-			quint32 pineVersion = pineVersionString.toInt(&okay);
-			if (okay)
-				_platformConfiguration->setPineVersion(pineVersion);
-		}
-	}
 }
 
 void ConfigWindow::on__usbDescriptor_editingFinished()

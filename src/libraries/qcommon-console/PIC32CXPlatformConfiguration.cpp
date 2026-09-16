@@ -1,27 +1,5 @@
-// Confidential and Proprietary Qualcomm Technologies, Inc.
-
-// NO PUBLIC DISCLOSURE PERMITTED:  Please report postings of this software on public servers or websites
-// to: DocCtrlAgent@qualcomm.com.
-
-// RESTRICTED USE AND DISCLOSURE:
-// This software contains confidential and proprietary information and is not to be used, copied, reproduced, modified
-// or distributed, in whole or in part, nor its contents revealed in any manner, without the express written permission
-// of Qualcomm Technologies, Inc.
-
-// Qualcomm is a trademark of QUALCOMM Incorporated, registered in the United States and other countries. All
-// QUALCOMM Incorporated trademarks are used with permission.
-
-// This software may be subject to U.S. and international export, re-export, or transfer laws.  Diversion contrary to U.S.
-// and international law is strictly prohibited.
-
-// Qualcomm Technologies, Inc.
-// 5775 Morehouse Drive
-// San Diego, CA 92121 U.S.A.
-// Copyright 2024-2025 Qualcomm Technologies, Inc.
-// All rights reserved.
-// Qualcomm Technologies Confidential and Proprietary
-
-// Author:	Biswajit Roy <biswroy@qti.qualcomm.com>
+// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+// SPDX-License-Identifier: BSD-3-Clause
 
 #include "AlpacaScript.h"
 #include "PIC32CXPlatformConfiguration.h"
@@ -52,7 +30,6 @@ const QString kCommmandGroup(QStringLiteral("command_group"));
 const QString kClassicAction(QStringLiteral("classic_action"));
 const QString kTabName(QStringLiteral("tab_name"));
 
-
 _PIC32CXPlatformConfiguration::_PIC32CXPlatformConfiguration()
 {
 	_platform = ePIC32CXAuto;
@@ -62,7 +39,7 @@ _PIC32CXPlatformConfiguration::_PIC32CXPlatformConfiguration()
 	_PIC32CXPlatformConfiguration::initialize();
 
 	// Add default tabs to _editorTabs
-	Tab generalTab, deviceInfoTab, terminalTab;
+	Tab generalTab, deviceInfoTab;
 
 	generalTab._name = "General";
 	generalTab._moveable = false;
@@ -76,15 +53,8 @@ _PIC32CXPlatformConfiguration::_PIC32CXPlatformConfiguration()
 	deviceInfoTab._ordinal = 1;
 	deviceInfoTab._userTab = false;
 
-	terminalTab._name = "Terminal";
-	terminalTab._moveable = true;
-	terminalTab._configurable = false;
-	terminalTab._ordinal = 2;
-	terminalTab._userTab = false;
-
 	_tabs.append(generalTab);
 	_tabs.append(deviceInfoTab);
-	_tabs.append(terminalTab);
 }
 
 _PIC32CXPlatformConfiguration::~_PIC32CXPlatformConfiguration()
@@ -893,7 +863,7 @@ void _PIC32CXPlatformConfiguration ::initialize()
 
 	pinData._setPin = 128;
 	pinData._hash = PIC32CXPinData::makePIC32CXHash(pinData._setPin);
-	pinData._enabled = true;
+	pinData._enabled = false;
 	pinData._inverted = false;
 	pinData._pinLabel = "USB0";
 	pinData._pinCommand = "usb0";
@@ -1144,7 +1114,7 @@ void _PIC32CXPlatformConfiguration ::initialize()
 
 	pinData._setPin = 312;
 	pinData._hash = PIC32CXPinData::makePIC32CXHash(pinData._setPin);
-	pinData._enabled = true;
+	pinData._enabled = false;
 	pinData._inverted = false;
 	pinData._pinLabel = "USB1";
 	pinData._pinCommand = "usb1";

@@ -78,7 +78,6 @@
     "fileVersion": 28,
     "modification_date": "Thu Apr 25 22:36:12 2024",
     "name": "Hamoa Lite",
-    "pineVersion": 1,
     "pins": [
         {
             "bus": "A",
@@ -613,22 +612,6 @@
             "ordinal": 2,
             "user_tab": false,
             "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "I2C",
-            "ordinal": 3,
-            "user_tab": false,
-            "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "Terminal",
-            "ordinal": 4,
-            "user_tab": false,
-            "visible": true
         }
     ],
     "usb_descriptor": "Hamoa Lite",
@@ -648,7 +631,7 @@
             "name": "uefi",
             "tooltip": "Configurable UEFI timing in ms",
             "type": 1
-        }
+        },
         {
             "cellLocation": "0,1",
             "default_value": "1000",
@@ -657,6 +640,5 @@
             "tooltip": "Configurable fastboot delay",
             "type": 1
         }
-
     ]
 }

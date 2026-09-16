@@ -63,7 +63,6 @@
     "fileVersion": 6,
     "modification_date": "Tue Dec 2 16:07:46 2025",
     "name": "NordAu RIDE",
-    "pineVersion": 1,
     "pins": [
         {
             "command": "kratos",
@@ -568,14 +567,6 @@
             "moveable": false,
             "name": "Device Info",
             "ordinal": 1,
-            "user_tab": false,
-            "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "Terminal",
-            "ordinal": 2,
             "user_tab": false,
             "visible": true
         }

@@ -1,0 +1,21 @@
+name: Validate TAC Configurations
+
+on:
+  pull_request:
+    branches: [main, develop, "feature/*"]
+    paths: ["configurations/**.tcnf"]
+  push:
+    branches: [main, develop, "feature/*"]
+    paths: ["configurations/**.tcnf"]
+
+jobs:
+  validate:
+    name: Validate .tcnf files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate configurations
+        run: |
+          pip install check-jsonschema --quiet
+          check-jsonschema --schemafile .github/tac-configuration-schema.json configurations/*.tcnf

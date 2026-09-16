@@ -1,40 +1,5 @@
-/*
-	Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. 
-	 
-	Redistribution and use in source and binary forms, with or without
-	modification, are permitted (subject to the limitations in the
-	disclaimer below) provided that the following conditions are met:
-	 
-		* Redistributions of source code must retain the above copyright
-		  notice, this list of conditions and the following disclaimer.
-	 
-		* Redistributions in binary form must reproduce the above
-		  copyright notice, this list of conditions and the following
-		  disclaimer in the documentation and/or other materials provided
-		  with the distribution.
-	 
-		* Neither the name of Qualcomm Technologies, Inc. nor the names of its
-		  contributors may be used to endorse or promote products derived
-		  from this software without specific prior written permission.
-	 
-	NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-	GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-	HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
-	WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-	MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-	IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
-	ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-	DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-	GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-	INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
-	IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-	OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-	IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
-/*
-	Author: Biswajit Roy (biswroy@qti.qualcomm.com)
-*/
+// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+// SPDX-License-Identifier: BSD-3-Clause
 
 #include "CreateConfigurationDialog.h"
 
@@ -43,10 +8,9 @@
 #include <QMetaEnum>
 #include <QSpinBox>
 
-CreateConfigurationDialog::CreateConfigurationDialog
-(
-	QWidget* parent
-) :
+const QByteArray kPSOCVariant("PSOCVariant");
+
+CreateConfigurationDialog::CreateConfigurationDialog(QWidget* parent) :
 	QDialog(parent)
 {
 	setupUi(this);
@@ -56,12 +20,18 @@ CreateConfigurationDialog::CreateConfigurationDialog
 	_platformComboBox->insertItem(_platformComboBox->count(), "PSOC", ePSOC);
 	_platformComboBox->insertItem(_platformComboBox->count(), "FTDI", eFTDI);
 	_platformComboBox->insertItem(_platformComboBox->count(), "PIC32CX (Automotive)", ePIC32CXAuto);
+	_platformComboBox->insertItem(_platformComboBox->count(), "FT232H (Arduino V1)", eFT232H);
+	_platformComboBox->insertItem(_platformComboBox->count(), "STM32 (Arduino V2)", eSTM32);
 
 	_chipCount->setMinimum(1);
 	_chipCount->setMaximum(4);
 
-	_chipCount->setEnabled(false);
-	_countLabel->setEnabled(false);
+	_gpioRadio->setChecked(true);
+
+	_psocConfiguration->hide();
+	_ftdiConfiguration->hide();
+
+	_configurationGroup->hide();
 }
 
 CreateConfigurationDialog::~CreateConfigurationDialog()
@@ -75,18 +45,40 @@ DebugBoardType CreateConfigurationDialog::getPlatform()
 
 int CreateConfigurationDialog::getChipCount()
 {
+	if (_platformType != eFTDI)
+		return 0;
+
 	return _chipCount->value();
+}
+
+PSOCVariant CreateConfigurationDialog::getPSOCVariant()
+{
+	PSOCVariant result{ePSOCUnknown};
+
+	if (_platformType == ePSOC)
+		result = psocVariantFromString(_psocGPIOConfiguration->checkedButton()->text());
+
+	return result;
 }
 
 void CreateConfigurationDialog::on__platformComboBox_currentIndexChanged(int index)
 {
-	bool enabled{false};
-
 	_platformType = static_cast<DebugBoardType>(_platformComboBox->itemData(index).toInt());
 
 	if (_platformType == eFTDI)
-		enabled = true;
+	{
+		_psocConfiguration->hide();
+		_ftdiConfiguration->show();
 
-	_chipCount->setEnabled(enabled);
-	_countLabel->setEnabled(enabled);
+		_configurationGroup->show();
+	}
+	else if (_platformType == ePSOC)
+	{
+		_ftdiConfiguration->hide();
+		_psocConfiguration->show();
+
+		_configurationGroup->show();
+	}
+	else
+		_configurationGroup->hide();
 }

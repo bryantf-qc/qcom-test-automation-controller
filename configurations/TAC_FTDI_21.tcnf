@@ -78,7 +78,6 @@
     "fileVersion": 10,
     "modification_date": "Thu Feb 20 12:49:04 2025",
     "name": "KUNO IDP35",
-    "pineVersion": 0,
     "pins": [
         {
             "bus": "A",
@@ -611,22 +610,6 @@
             "moveable": false,
             "name": "Device Info",
             "ordinal": 2,
-            "user_tab": false,
-            "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "I2C",
-            "ordinal": 3,
-            "user_tab": false,
-            "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "Terminal",
-            "ordinal": 4,
             "user_tab": false,
             "visible": true
         }

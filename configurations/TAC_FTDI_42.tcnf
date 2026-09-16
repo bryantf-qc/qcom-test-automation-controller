@@ -22,15 +22,13 @@
             "chip_index": 0
         }
     ],
-    "buttons": [
-    ],
+    "buttons": [],
     "chip_count": 1,
     "creation_date": "Mon Sep 11 15:16:22 2023",
     "description": "ALPACA-LITE SMART LABEL",
     "fileVersion": 53,
     "modification_date": "Wed Aug 7 11:25:20 2024",
     "name": "ALPACA-LITE SMART LABEL",
-    "pineVersion": 0,
     "pins": [
         {
             "bus": "A",
@@ -565,25 +563,8 @@
             "ordinal": 1,
             "user_tab": false,
             "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "Fusion",
-            "ordinal": 3,
-            "user_tab": false,
-            "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "Terminal",
-            "ordinal": 4,
-            "user_tab": false,
-            "visible": true
         }
     ],
     "usb_descriptor": "ALPACA-LITE SMART LABEL",
-    "variables": [
-    ]
+    "variables": []
 }

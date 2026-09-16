@@ -1,37 +1,5 @@
-# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. 
-#  
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted (subject to the limitations in the
-# disclaimer below) provided that the following conditions are met:
-#  
-# 	* Redistributions of source code must retain the above copyright
-# 	  notice, this list of conditions and the following disclaimer.
-#  
-# 	* Redistributions in binary form must reproduce the above
-# 	  copyright notice, this list of conditions and the following
-# 	  disclaimer in the documentation and/or other materials provided
-# 	  with the distribution.
-#  
-# 	* Neither the name of Qualcomm Technologies, Inc. nor the names of its
-# 	  contributors may be used to endorse or promote products derived
-# 	  from this software without specific prior written permission.
-#  
-# NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-# GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-# HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
-# WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-# IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
-# ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-# GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
-# IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-# OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-# IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-# Maintainer: Biswajit Roy (biswroy@qti.qualcomm.com)
-# Original author: Michael Simpson (msimpson@qti.qualcomm.com)
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: BSD-3-Clause
 
 # Include version information
 include(${CMAKE_SOURCE_DIR}/src/libraries/qcommon-console/version.cmake)
@@ -42,7 +10,7 @@ set(TACDEV ${CMAKE_SOURCE_DIR}/interfaces/C++/TACDev)
 
 # Common compile definitions
 set(QCOMMONCONSOLE_DEFINITIONS
-    QT_DISABLE_DEPRECATED_UP_TO=0x060600
+    QT_DISABLE_DEPRECATED_UP_TO=0x060900
     QTAC_STATIC
 )
 
@@ -55,8 +23,7 @@ endif()
 
 if(UNIX)
     set(CMAKE_CXX_STANDARD 20)
-    list(APPEND QCOMMONCONSOLE_DEFINITIONS __X86_64__)
-    
+
     # Unix compiler flags
     set(QCOMMONCONSOLE_CXX_FLAGS
         -Werror
@@ -98,8 +65,11 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 4)
         list(APPEND QCOMMONCONSOLE_DEFINITIONS __i386__)
     endif()
     set(WINTARGET "Win32")
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64")
+    message(STATUS "Building ARM64")
+    set(WINTARGET "ARM64")
 else()
-    message(STATUS "Building 64 bit")
+    message(STATUS "Building x86_64")
     if(UNIX)
         list(APPEND QCOMMONCONSOLE_DEFINITIONS __X86_64__)
     endif()

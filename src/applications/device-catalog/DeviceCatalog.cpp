@@ -1,42 +1,5 @@
-/*
-	Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries. 
-	 
-	Redistribution and use in source and binary forms, with or without
-	modification, are permitted (subject to the limitations in the
-	disclaimer below) provided that the following conditions are met:
-	 
-		* Redistributions of source code must retain the above copyright
-		  notice, this list of conditions and the following disclaimer.
-	 
-		* Redistributions in binary form must reproduce the above
-		  copyright notice, this list of conditions and the following
-		  disclaimer in the documentation and/or other materials provided
-		  with the distribution.
-	 
-		* Neither the name of Qualcomm Technologies, Inc. nor the names of its
-		  contributors may be used to endorse or promote products derived
-		  from this software without specific prior written permission.
-	 
-	NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
-	GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
-	HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
-	WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-	MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-	IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
-	ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-	DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-	GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-	INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
-	IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-	OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-	IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
-/*
-	Author: Michael Simpson (msimpson@qti.qualcomm.com)
-			Biswajit Roy (biswroy@qti.qualcomm.com)
-			Arkojit Sen (arkosen@qti.qualcomm.com)
-*/
+// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+// SPDX-License-Identifier: BSD-3-Clause
 
 #include "ApplicationEnhancements.h"
 #include "ConsoleApplicationEnhancements.h"
@@ -47,6 +10,7 @@
 // Qt
 
 #include <QDir>
+#include <QFile>
 #include <QMenu>
 #include <QMessageBox>
 #include <QMediaPlayer>
@@ -60,7 +24,6 @@
 	#include <unistd.h>
 #endif
 
-
 const int kConfigNameCol{0};
 const int kBoardType{1};
 const int kPlatformID{2};
@@ -68,6 +31,7 @@ const int kPlatformID{2};
 const QByteArray kv16FirmwareNotice(QByteArrayLiteral("You've chosen to program the v16 firmware. This firmware may contain updates not applicable to all teams. Uncheck unless you know what you're doing"));
 const QByteArray kv17FirmwareNotice(QByteArrayLiteral("You've chosen to program the v17 firmware. This firmware may contain updates not applicable to all teams. Uncheck unless you know what you're doing"));
 const QByteArray kDefaultNotice(QByteArrayLiteral("This space is used to share notification to user"));
+const QStringList kVariants{"LP030", "LP038"};
 
 
 DeviceCatalog::DeviceCatalog(QWidget* parent) :QDialog(parent)
@@ -249,11 +213,7 @@ void DeviceCatalog::invokeProgrammer(const DebugBoardType type)
 
 void DeviceCatalog::invokeLiteProgrammer(const QString& serialNumber, const PlatformID platformId)
 {
-#ifdef Q_OS_LINUX
-	QString program = "/opt/qcom/Alpaca/bin/LiteProgrammer";
-#else
-	QString program = "LiteProgrammer";
-#endif
+	QString program = applicationBinPath() + "LiteProgrammer";
 	QStringList arguments; //-p platformid=18 serial=FT6G3Z6Y
 	arguments << "-p";
 	arguments << "serial=" + serialNumber;
@@ -273,11 +233,7 @@ void DeviceCatalog::invokeLiteProgrammer(const QString& serialNumber, const Plat
 
 void DeviceCatalog::invokePSOCProgrammer(const QString &serialNumber, const PlatformID platformId)
 {
-#ifdef Q_OS_LINUX
-	QString program = "/opt/qcom/Alpaca/bin/PSOCProgrammer";
-#else
-	QString program = "PSOCProgrammer";
-#endif
+	QString program = applicationBinPath() + "PSOCProgrammer";
 	QStringList arguments; //-p platformid=18 serial=FT6G3Z6Y
 	arguments << "-p";
 	arguments << "serial=" + serialNumber;
@@ -297,11 +253,7 @@ void DeviceCatalog::invokePSOCProgrammer(const QString &serialNumber, const Plat
 
 void DeviceCatalog::onConfigurationLinkClicked(QTableWidgetItem* twi)
 {
-#ifdef Q_OS_LINUX
-	QString program = "/opt/qcom/Alpaca/bin/TACConfigEditor";
-#else
-	QString program = "TACConfigEditor";
-#endif
+	QString program = applicationBinPath() + "TACConfigEditor";
 	if (twi->column() == 5)
 	{
 		QString configPath = twi->text();
@@ -348,9 +300,9 @@ void DeviceCatalog::on__deviceTable_itemClicked(QTableWidgetItem *item)
 		{
 			if (twi->text() == "PSOC")
 			{
-				// _firmwareUpdateBtn->setEnabled(true);
-				// _firmwareLabel->setEnabled(true);
-				// _firmwareSelect->setEnabled(true);
+				_firmwareUpdateBtn->setEnabled(true);
+				_firmwareLabel->setEnabled(true);
+				_firmwareSelect->setEnabled(true);
 			}
 			else
 			{
@@ -393,16 +345,45 @@ void DeviceCatalog::on__programBtn_clicked()
 	}
 }
 
-
 void DeviceCatalog::on__firmwareUpdateBtn_clicked()
 {
-	// firmware programming capabilities cannot be enabled
-	// due to lack of open-source hardware protocols in psoc
+	for (const auto& variant : kVariants)
+	{
+		QString firmwarePath = QString(_firmwareDir) + QDir::separator() + variant + QDir::separator() + "MicroEpm.cyacd";
+
+		if (QFile::exists(firmwarePath) == false)
+			continue;
+
+		QString program = applicationBinPath() + "FWUpdate";
+		QStringList arguments;
+		arguments << "path=" + firmwarePath;
+
+		QProcess* process = new QProcess(Q_NULLPTR);
+
+		process->setProgram(program);
+		process->setArguments(arguments);
+		process->start();
+		process->waitForFinished(30000);
+
+		if (process->exitCode() == 0)
+		{
+			QMessageBox::information(this, "Firmware Update Complete",
+				QString("The device has been programmed with firmware from %1.").arg(firmwarePath));
+			process->deleteLater();
+			return;
+		}
+
+		process->deleteLater();
+	}
+
+	QMessageBox::warning(this, "Firmware Update Failed",
+		"Unable to program the connected device with the selected firmware version. "
+		"Confirm whether a PSOC debug board is connected and try again.");
 }
 
 void DeviceCatalog::on__docsBtn_clicked()
 {
-	startLocalBrowser(docsRoot() + "/getting-started/08-Device-Catalog.html");
+	startLocalBrowser(docsRoot() + "/getting-started/05-Device-Catalog.html");
 }
 
 void DeviceCatalog::onInfoGroupCloseBtnClicked()
@@ -437,6 +418,16 @@ void DeviceCatalog::on__firmwareSelect_currentTextChanged(const QString &firmwar
 			break;
 		case 17:
 			_firmwareDir = applicationDataPath().toLatin1() + QDir::separator().toLatin1() + "firmware/1.x.17.0";
+			_infoLabelText->setText(kv17FirmwareNotice);
+			_infoGroupBox->show();
+			break;
+		case 18:
+			_firmwareDir = applicationDataPath().toLatin1() + QDir::separator().toLatin1() + "firmware/1.x.18.0";
+			_infoLabelText->setText(kv17FirmwareNotice);
+			_infoGroupBox->show();
+			break;
+		case 19:
+			_firmwareDir = applicationDataPath().toLatin1() + QDir::separator().toLatin1() + "firmware/1.x.19.0";
 			_infoLabelText->setText(kv17FirmwareNotice);
 			_infoGroupBox->show();
 		}

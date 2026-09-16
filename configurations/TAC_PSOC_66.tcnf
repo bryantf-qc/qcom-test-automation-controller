@@ -64,7 +64,6 @@
     "form_dimension": "560,819",
     "modification_date": "Wed Apr 22 10:25:41 2026",
     "name": "Hawi MTP8975",
-    "pineVersion": 1,
     "pins": [
         {
             "classic_action": "TAC_SOFT_RESET",
@@ -396,22 +395,6 @@
             "moveable": false,
             "name": "Device Info",
             "ordinal": 1,
-            "user_tab": false,
-            "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "I2C",
-            "ordinal": 2,
-            "user_tab": true,
-            "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "Terminal",
-            "ordinal": 4,
             "user_tab": false,
             "visible": true
         }

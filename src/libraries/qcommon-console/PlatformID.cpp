@@ -1,29 +1,5 @@
-﻿// Confidential and Proprietary Qualcomm Technologies, Inc.
-
-// NO PUBLIC DISCLOSURE PERMITTED:  Please report postings of this software on public servers or websites
-// to: DocCtrlAgent@qualcomm.com.
-
-// RESTRICTED USE AND DISCLOSURE:
-// This software contains confidential and proprietary information and is not to be used, copied, reproduced, modified
-// or distributed, in whole or in part, nor its contents revealed in any manner, without the express written permission
-// of Qualcomm Technologies, Inc.
-
-// Qualcomm is a trademark of QUALCOMM Incorporated, registered in the United States and other countries. All
-// QUALCOMM Incorporated trademarks are used with permission.
-
-// This software may be subject to U.S. and international export, re-export, or transfer laws.  Diversion contrary to U.S.
-// and international law is strictly prohibited.
-
-// Qualcomm Technologies, Inc.
-// 5775 Morehouse Drive
-// San Diego, CA 92121 U.S.A.
-// Copyright 2021 Qualcomm Technologies, Inc.
-// All rights reserved.
-// Qualcomm Technologies Confidential and Proprietary
-
-/*
-	Author: Michael Simpson (msimpson@qti.qualcomm.com)
-*/
+﻿// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+// SPDX-License-Identifier: BSD-3-Clause
 
 #include "PlatformID.h"
 
@@ -92,6 +68,14 @@ void PlatformContainer::initialize()
 		PlatformEntry pic32cxEntry(new _PlatformEntry(ALPACA_PIC32CX_ID, ePIC32CXAuto, "Default Automotive (PIC32CX)"));
 
 		_platformIds.insert(ALPACA_PIC32CX_ID, pic32cxEntry);
+
+		PlatformEntry ft232hEntry(new _PlatformEntry(ALPACA_BUGHOPPER_ID, eFT232H, "Arduino BugHopper V1 (Default)"));
+		ft232hEntry->_usbDescriptor = "BugHopper";
+		ft232hEntry->_pinSets[0].setFlag(eC);
+		_platformIds.insert(ALPACA_BUGHOPPER_ID, ft232hEntry);
+
+		PlatformEntry stm32Entry(new _PlatformEntry(ALPACA_STM32_ID, eSTM32, "Arduino BugHopper V2 (Default)"));
+		_platformIds.insert(ALPACA_STM32_ID, stm32Entry);
 
 		initializeDynamic();
 	}

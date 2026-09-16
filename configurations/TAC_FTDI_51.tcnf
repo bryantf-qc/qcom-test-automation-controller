@@ -70,7 +70,6 @@
     "fileVersion": 15,
     "modification_date": "Thu Jan 23 15:38:42 2025",
     "name": "Glymur CoB QCB",
-    "pineVersion": 1,
     "pins": [
         {
             "bus": "A",
@@ -603,22 +602,6 @@
             "moveable": false,
             "name": "Device Info",
             "ordinal": 1,
-            "user_tab": false,
-            "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "Fusion",
-            "ordinal": 3,
-            "user_tab": false,
-            "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "Terminal",
-            "ordinal": 4,
             "user_tab": false,
             "visible": true
         }

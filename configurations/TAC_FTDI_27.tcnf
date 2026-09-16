@@ -78,7 +78,6 @@
     "fileVersion": 5,
     "modification_date": "Tue Nov 21 16:26:31 2023",
     "name": "Lanai Debug",
-    "pineVersion": 0,
     "pins": [
         {
             "bus": "A",
@@ -611,22 +610,6 @@
             "moveable": false,
             "name": "Device Info",
             "ordinal": 1,
-            "user_tab": false,
-            "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "Fusion",
-            "ordinal": 3,
-            "user_tab": false,
-            "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "Terminal",
-            "ordinal": 4,
             "user_tab": false,
             "visible": true
         }

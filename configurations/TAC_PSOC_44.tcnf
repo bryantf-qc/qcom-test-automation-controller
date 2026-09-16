@@ -55,7 +55,6 @@
     "fileVersion": 2,
     "modification_date": "Tue Dec 10 13:59:16 2024",
     "name": "Kanapali QRD",
-    "pineVersion": 1,
     "pins": [
         {
             "classic_action": "TC_EUD_EARLY_BOOT_EN",
@@ -272,6 +271,9 @@
     "platform_type": "PSOC",
     "reset_enabled": true,
     "script": "def powerOffTheDevice() \r\n\tlogComment ====== powerOffTheDevice sequence start ======\r\n\r\n\tbattery 1\r\n\tusb0 1\r\n\tusb1 1\r\n\r\n\tlogComment ====== powerOffTheDevice sequence finish ======\r\n\r\ndef powerOnTheDevice()\r\n\tlogComment ====== powerOnTheDevice sequence start ======\r\n\r\n\tdelay 500\r\n\tbattery 0\r\n\tdelay 900\r\n\tusb0 0\r\n\tusb1 0\r\n\tdelay 30\r\n\r\n\tlogComment ====== powerOnTheDevice sequence finish ======\r\n\r\ndef powerOff()\r\n\tlogComment ====== powerOff start ======\r\n\r\n\tpowerOffTheDevice\r\n\r\n\tpkey 0\r\n\tvolup 0\r\n\tvoldn 0\r\n\r\n\tpedl 0\r\n\r\n\tlogComment ====== powerOff finish ======\r\n\r\ndef powerOn()\r\n\tlogComment ====== powerOn start ======\r\n\r\n\tpowerOff\r\n\r\n\tpowerOnTheDevice\r\n\r\n\tpkey 1\r\n\tdelay 800\r\n\tpkey 0\r\n\r\n\tlogComment ====== powerOn finish ======\r\n\r\ndef bootToEDL()\r\n\tlogComment ====== bootToEDL start ======\r\n\r\n\tpowerOffTheDevice\r\n\r\n\tpkey 0\r\n\tvolup 0\r\n\tvoldn 0\r\n\r\n\tpedl 1\r\n\r\n\tpowerOnTheDevice\r\n\r\n\tpkey 1\r\n\tdelay $edl\r\n\tpkey 0\r\n\r\n\tpedl 0\r\n\r\n\tlogComment ====== bootToEDL finish ======\r\n\r\ndef bootToSecondaryEDL()\r\n\tlogComment ====== bootToSecondaryEDL start ======\r\n\r\n\tpowerOffTheDevice\r\n\r\n\tpkey 0\r\n\tvolup 0\r\n\tvoldn 0\r\n\r\n\tsedl 1\r\n\r\n\tpowerOnTheDevice\r\n\r\n\tpkey 1\r\n\tdelay 800\r\n\tpkey 0\r\n\r\n\tdelay 1300\r\n\r\n\tsedl 0\r\n\r\n\tlogComment ====== bootToSecondaryEDL finish ======\r\n\r\ndef bootToUEFI()\r\n\tlogComment ====== bootToUEFIMenu start ======\r\n\r\n\tpowerOffTheDevice\r\n\r\n\t// Put buttons in a set state\r\n\tpkey 0\r\n\tvolup 1\r\n\tvoldn 0\r\n\r\n\tpedl 0\r\n\r\n\tpowerOnTheDevice\r\n\r\n\tpkey 1\r\n\tdelay $uefi\r\n\tpkey 0\r\n\tvolup 0\r\n\tdelay 12\r\n\tpkey 1\r\n\tvolup 1\r\n\r\n\tpkey 0\r\n\tvolup 0\r\n\r\n\tlogComment ====== bootToUEFIMenu finish ======\r\n\r\ndef bootToFastboot()\r\n\tlogComment ====== bootToFastboot start ======\r\n\r\n\tpowerOffTheDevice\r\n\r\n\tpkey 0\r\n\tvolup 0\r\n\tvoldn 1\r\n\r\n\tpedl 0\r\n\r\n\tpowerOnTheDevice\r\n\r\n\tpkey 1\r\n\tdelay 800\r\n\tpkey 0\r\n\r\n\tdelay $fastboot\r\n\tvoldn 0\r\n\tdelay 30\r\n\tvoldn 1\r\n\r\n\tvoldn 0\r\n\r\n\tlogComment ====== bootToFastboot finished ======\r\n",
+    "supportedFirmwareVer": [
+        15
+    ],
     "tabs": [
         {
             "configurable": true,
@@ -290,27 +292,11 @@
             "visible": true
         },
         {
-            "configurable": false,
-            "moveable": true,
-            "name": "I2C",
-            "ordinal": 2,
-            "user_tab": true,
-            "visible": true
-        },
-        {
             "configurable": true,
             "moveable": true,
             "name": "Fusion",
             "ordinal": 3,
             "user_tab": true,
-            "visible": true
-        },
-        {
-            "configurable": false,
-            "moveable": true,
-            "name": "Terminal",
-            "ordinal": 4,
-            "user_tab": false,
             "visible": true
         }
     ],
