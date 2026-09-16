@@ -66,17 +66,26 @@ static const char* kDefaultValue           = "default_value";
 static const char* kType                   = "type";
 
 // Static storage for factory defaults
-PSOCPinEntries _PSOCPlatformConfiguration::_classicActions;
+PSOCPinEntries  _PSOCPlatformConfiguration::_classicActions;
+PSOCI2CEntries  _PSOCPlatformConfiguration::_classicI2CActions;
+PSOCI2CSlaves   _PSOCPlatformConfiguration::_classicSlaveConfigs;
 
 // ---------------------------------------------------------------------------
 
-_PSOCPlatformConfiguration::_PSOCPlatformConfiguration()
+_PSOCPlatformConfiguration::_PSOCPlatformConfiguration(PSOCVariant psocVariant)
+    : _variant(psocVariant)
 {
     if (_classicActions.isEmpty())
-        _PSOCPlatformConfiguration::initialize();
+        _PSOCPlatformConfiguration::initialize(psocVariant);
 
     for (const auto& kv : _classicActions)
         _pinEntries[kv.first] = kv.second;
+
+    if (psocVariant == ePSOCGPIOIIC)
+    {
+        _slaveConfigs = _classicSlaveConfigs;
+        refreshSlaveConfig();
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -522,7 +531,7 @@ void _PSOCPlatformConfiguration::write(json_t& j)
 // Factory defaults (ported from qcommon-console/PSOCPlatformConfiguration.cpp)
 // ---------------------------------------------------------------------------
 
-void _PSOCPlatformConfiguration::initialize()
+void _PSOCPlatformConfiguration::initialize(PSOCVariant psocVariant)
 {
     auto add = [&](PinID pin,
                    const char* label,
@@ -576,4 +585,324 @@ void _PSOCPlatformConfiguration::initialize()
     add(48, "",                  "",        "",                                            -1, eUnknownCommandGroup, false, "", {-1,-1}, false, false);
     add(49, "",                  "",        "",                                            -1, eUnknownCommandGroup, false, "", {-1,-1}, false, false);
     add(15, "",                  "",        "",                                            -1, eUnknownCommandGroup, false, "TAC_SOFT_RESET", {-1,-1}, false, false);
+
+    // --- I2C variant (ePSOCGPIOIIC) factory defaults ---
+    if (psocVariant == ePSOCGPIOIIC && _classicI2CActions.isEmpty())
+    {
+        auto addI2C = [&](PinID pin, PinID slaveAddr, PinID writeAddr,
+                          const char* label, const char* cmd, const char* tooltip,
+                          const char* classicAction, bool enabled, CommandGroups group,
+                          const char* tabName, qtac::Point cell, bool inverted = false)
+        {
+            PSOCI2CData d;
+            d._pin          = pin;
+            d._slaveAddress = slaveAddr;
+            d._writeAddress = writeAddr;
+            d._hash         = d.makeHash();
+            d._pinLabel     = label;
+            d._pinCommand   = cmd;
+            d._pinTooltip   = tooltip;
+            d._classicAction = classicAction;
+            d._enabled      = enabled;
+            d._commandGroup = group;
+            d._tabName      = tabName;
+            d._cellLocation = cell;
+            d._inverted     = inverted;
+            _classicI2CActions[d._hash] = d;
+        };
+
+        // KTS1622EUAATR entries (pins 0-15, slave 0x20)
+        addI2C(0,  0x20, 0x02, "CSI0 MUX Select",  "csi0",   "High routes CSI to Camera B2B connector, low routes to 22-pin camera connector", "CSI0 MUX Select",  true,  eSwitchGroup, "KTS1622EUAATR", {0,0});
+        addI2C(1,  0x20, 0x02, "CSI1 MUX Select",  "csi1",   "High routes CSI to Camera B2B connector, low routes to 22-pin camera connector", "CSI1 MUX Select",  true,  eSwitchGroup, "KTS1622EUAATR", {1,0});
+        addI2C(2,  0x20, 0x02, "CSI2 MUX Select",  "csi2",   "High routes CSI to Camera B2B connector, low routes to 22-pin camera connector", "CSI2 MUX Select",  true,  eSwitchGroup, "KTS1622EUAATR", {2,0});
+        addI2C(3,  0x20, 0x02, "CSI3 MUX Select",  "csi3",   "High routes CSI to Camera B2B connector, low routes to 22-pin camera connector", "CSI3 MUX Select",  true,  eSwitchGroup, "KTS1622EUAATR", {3,0});
+        addI2C(4,  0x20, 0x02, "DSI0 MUX Select",  "dsi0",   "Routes DSI0 display output", "DSI0 MUX Select",  true,  eSwitchGroup, "KTS1622EUAATR", {4,0});
+        addI2C(5,  0x20, 0x02, "DSI1 MUX Select",  "dsi1",   "Routes DSI1 display output", "DSI1 MUX Select",  true,  eSwitchGroup, "KTS1622EUAATR", {5,0});
+        addI2C(6,  0x20, 0x02, "HDMI I2S Select",  "hdmii2s","Routes HDMI I2S",             "HDMI I2S Select",  true,  eSwitchGroup, "KTS1622EUAATR", {6,0});
+        addI2C(7,  0x20, 0x02, "PCIE Select",      "pcie",   "Routes PCIe signals",         "PCIE Select",      true,  eSwitchGroup, "KTS1622EUAATR", {7,0});
+        addI2C(8,  0x20, 0x03, "I2S0 MUX Select",  "i2s0",   "Routes I2S0",                 "I2S0 MUX Select",  true,  eSwitchGroup, "KTS1622EUAATR", {0,1});
+        addI2C(9,  0x20, 0x03, "I2S1 MUX Select",  "i2s1",   "Routes I2S1",                 "I2S1 MUX Select",  true,  eSwitchGroup, "KTS1622EUAATR", {1,1});
+        addI2C(10, 0x20, 0x03, "I2S2 MUX Select",  "i2s2",   "Routes I2S2",                 "I2S2 MUX Select",  true,  eSwitchGroup, "KTS1622EUAATR", {2,1});
+        addI2C(11, 0x20, 0x03, "USB0 MUX Select",  "usb0mux","Routes USB0 path",             "USB0 MUX Select",  false, eSwitchGroup, "KTS1622EUAATR", {3,1});
+        addI2C(12, 0x20, 0x03, "USB1 MUX Select",  "usb1mux","Routes USB1 path",             "USB1 MUX Select",  true,  eSwitchGroup, "KTS1622EUAATR", {4,1});
+        addI2C(13, 0x20, 0x03, "SIM MUX Select",   "simmux", "Routes SIM card path",        "SIM MUX Select",   true,  eSwitchGroup, "KTS1622EUAATR", {5,1});
+        addI2C(14, 0x20, 0x03, "I2S2 MUX B Select","i2s2b",  "Routes I2S2 alternate path",  "I2S2 MUX B Select",true,  eSwitchGroup, "KTS1622EUAATR", {6,1});
+        addI2C(15, 0x20, 0x03, "Reserved",         "rsvd15", "Reserved",                    "Reserved",         false, eSwitchGroup, "KTS1622EUAATR", {7,1});
+
+        // TCA9534APWR entries (pins 16-23, slave 0x38)
+        addI2C(16, 0x38, 0x01, "SPI0 MUX Select",  "spi0",   "Routes SPI0 between camera/sensor path and Display B2B connector path", "SPIO MUX Select", true,  eSwitchGroup, "TCA9534APWR", {0,0});
+        addI2C(17, 0x38, 0x01, "SPI1 MUX Select",  "spi1",   "Routes SPI1",                 "SPI1 MUX Select",  true,  eSwitchGroup, "TCA9534APWR", {1,0});
+        addI2C(18, 0x38, 0x01, "NFC MUX Select",   "nfcmux", "Routes NFC signals",          "NFC MUX Select",   true,  eSwitchGroup, "TCA9534APWR", {2,0});
+        addI2C(19, 0x38, 0x01, "EARC MUX Select",  "earc",   "Routes eARC signals",         "EARC MUX Select",  true,  eSwitchGroup, "TCA9534APWR", {3,0});
+        addI2C(20, 0x38, 0x01, "Reserved",         "rsvd20", "Reserved",                    "Reserved",         false, eSwitchGroup, "TCA9534APWR", {4,0});
+        addI2C(21, 0x38, 0x01, "Reserved",         "rsvd21", "Reserved",                    "Reserved",         false, eSwitchGroup, "TCA9534APWR", {5,0});
+        addI2C(22, 0x38, 0x01, "Reserved",         "rsvd22", "Reserved",                    "Reserved",         false, eSwitchGroup, "TCA9534APWR", {6,0});
+        addI2C(23, 0x38, 0x01, "Reserved",         "rsvd23", "Reserved",                    "Reserved",         false, eSwitchGroup, "TCA9534APWR", {7,0});
+
+        if (_classicSlaveConfigs.isEmpty())
+        {
+            PSOCI2CSlave slave;
+            slave._variant      = eKTS1622EUAATR;
+            slave._slaveAddress = 0x20;
+            slave._configAddress = 0x02;
+            slave._portCount    = 2;
+            _classicSlaveConfigs.append(slave);
+
+            slave._variant      = eTCA9534APWR;
+            slave._slaveAddress = 0x38;
+            slave._configAddress = 0x01;
+            slave._portCount    = 1;
+            _classicSlaveConfigs.append(slave);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// PSoC variant management
+// ---------------------------------------------------------------------------
+
+void _PSOCPlatformConfiguration::setVariant(PSOCVariant psocVariant)
+{
+    _variant = psocVariant;
+}
+
+// ---------------------------------------------------------------------------
+// I2C slave configuration management
+// ---------------------------------------------------------------------------
+
+qtac::String _PSOCPlatformConfiguration::i2cSlaveTabName(const PSOCI2CSlave& slave)
+{
+    // Format: "KTS1622EUAATR (0x20)" etc.
+    return psocSlaveToString(slave._variant) + " (0x"
+         + qtac::String::number(static_cast<uint64_t>(slave._slaveAddress), 16) + ")";
+}
+
+void _PSOCPlatformConfiguration::refreshSlaveConfig()
+{
+    _i2cEntries.clear();
+
+    for (const auto& kv : _classicI2CActions)
+    {
+        const PSOCI2CData& classicEntry = kv.second;
+
+        for (const auto& slave : _slaveConfigs)
+        {
+            if (psocSlaveToString(slave._variant) != classicEntry._tabName)
+                continue;
+
+            PSOCI2CData entry = classicEntry;
+            entry._slaveAddress = slave._slaveAddress;
+            entry._writeAddress = slave._configAddress;
+            entry._hash         = entry.makeHash();
+            entry._tabName      = i2cSlaveTabName(slave);
+
+            _i2cEntries[entry._hash] = entry;
+        }
+    }
+
+    rebuildI2CTabs();
+}
+
+void _PSOCPlatformConfiguration::rebuildI2CTabs()
+{
+    // No-op in source/: tab management is a GUI-layer concern.
+    // In the upstream Qt code this adds Tab objects to _tabs.
+    // The source library does not maintain the tab list.
+}
+
+PSOCI2CSlaves _PSOCPlatformConfiguration::getSlaveConfigs() const
+{
+    return _slaveConfigs;
+}
+
+void _PSOCPlatformConfiguration::addSlaveConfig(const PSOCI2CSlave& slave)
+{
+    _slaveConfigs.append(slave);
+    refreshSlaveConfig();
+}
+
+void _PSOCPlatformConfiguration::removeSlaveConfig(PinID slaveAddress)
+{
+    for (int i = _slaveConfigs.size() - 1; i >= 0; --i)
+        if (_slaveConfigs.at(i)._slaveAddress == slaveAddress)
+            _slaveConfigs.removeAt(i);
+    refreshSlaveConfig();
+}
+
+Pins _PSOCPlatformConfiguration::getI2CPinEntries()
+{
+    Pins result;
+    for (const auto& kv : _i2cEntries)
+    {
+        const PSOCI2CData& d = kv.second;
+        PinEntry pe;
+        pe._pin          = d._pin;
+        pe._enabled      = d._enabled;
+        pe._hash         = d._hash;
+        pe._cellLocation = d._cellLocation;
+        pe._commandGroup = d._commandGroup;
+        pe._pinCommand   = d._pinCommand;
+        pe._inverted     = d._inverted;
+        pe._pinLabel     = d._pinLabel;
+        pe._pinTooltip   = d._pinTooltip;
+        pe._tabName      = d._tabName;
+        result.append(pe);
+    }
+    std::sort(result.begin(), result.end(), [](const PinEntry& a, const PinEntry& b) {
+        if (a._tabName != b._tabName) return a._tabName < b._tabName;
+        return a._pin < b._pin;
+    });
+    return result;
+}
+
+PSOCI2CEntries _PSOCPlatformConfiguration::getI2CEntries() const
+{
+    return _i2cEntries;
+}
+
+PSOCI2CEntries _PSOCPlatformConfiguration::getActiveI2CEntries() const
+{
+    PSOCI2CEntries result;
+    for (const auto& kv : _i2cEntries)
+        if (kv.second._enabled)
+            result[kv.first] = kv.second;
+    return result;
+}
+
+qtac::List<PSOCI2CData> _PSOCPlatformConfiguration::getI2CEntriesForSlave(const PSOCI2CSlave& slave) const
+{
+    qtac::String tabName = i2cSlaveTabName(slave);
+    qtac::List<PSOCI2CData> result;
+    for (const auto& kv : _i2cEntries)
+    {
+        const PSOCI2CData& d = kv.second;
+        if (d._tabName == tabName && d._slaveAddress == slave._slaveAddress)
+            result.append(d);
+    }
+    std::sort(result.begin(), result.end(), [](const PSOCI2CData& a, const PSOCI2CData& b) {
+        return a._pin < b._pin;
+    });
+    int rowCount = slave._portCount * 8;
+    while (result.size() > rowCount)
+        result.removeAt(result.size() - 1);
+    return result;
+}
+
+bool _PSOCPlatformConfiguration::addI2CSlave(const PSOCI2CData& i2cData)
+{
+    PSOCI2CData entry = i2cData;
+    entry._hash = entry.makeHash();
+    _i2cEntries[entry._hash] = entry;
+    return true;
+}
+
+void _PSOCPlatformConfiguration::removeI2CSlave(HashType hash)
+{
+    _i2cEntries.remove(hash);
+}
+
+PSOCI2CData _PSOCPlatformConfiguration::getI2CSlave(HashType hash) const
+{
+    auto it = _i2cEntries.find(hash);
+    return (it != _i2cEntries.end()) ? it->second : PSOCI2CData();
+}
+
+// ---------------------------------------------------------------------------
+// I2C pin getters / setters
+// ---------------------------------------------------------------------------
+
+bool _PSOCPlatformConfiguration::getI2CPinEnableState(HashType hash) const
+{
+    auto it = _i2cEntries.find(hash);
+    return (it != _i2cEntries.end()) ? it->second._enabled : true;
+}
+void _PSOCPlatformConfiguration::setI2CPinEnableState(HashType hash, bool newState)
+{
+    auto it = _i2cEntries.find(hash);
+    if (it == _i2cEntries.end()) throw std::invalid_argument("setI2CPinEnableState: invalid hash");
+    it->second._enabled = newState;
+}
+
+bool _PSOCPlatformConfiguration::getI2CPinInvertedState(HashType hash) const
+{
+    auto it = _i2cEntries.find(hash);
+    return (it != _i2cEntries.end()) ? it->second._inverted : false;
+}
+void _PSOCPlatformConfiguration::setI2CPinInvertedState(HashType hash, bool newState)
+{
+    auto it = _i2cEntries.find(hash);
+    if (it == _i2cEntries.end()) throw std::invalid_argument("setI2CPinInvertedState: invalid hash");
+    it->second._inverted = newState;
+}
+
+qtac::String _PSOCPlatformConfiguration::getI2CPinLabel(HashType hash) const
+{
+    auto it = _i2cEntries.find(hash);
+    return (it != _i2cEntries.end()) ? it->second._pinLabel : qtac::String();
+}
+void _PSOCPlatformConfiguration::setI2CPinLabel(HashType hash, const qtac::String& v)
+{
+    auto it = _i2cEntries.find(hash);
+    if (it == _i2cEntries.end()) throw std::invalid_argument("setI2CPinLabel: invalid hash");
+    it->second._pinLabel = v;
+}
+
+qtac::String _PSOCPlatformConfiguration::getI2CPinTooltip(HashType hash) const
+{
+    auto it = _i2cEntries.find(hash);
+    return (it != _i2cEntries.end()) ? it->second._pinTooltip : qtac::String();
+}
+void _PSOCPlatformConfiguration::setI2CPinTooltip(HashType hash, const qtac::String& v)
+{
+    auto it = _i2cEntries.find(hash);
+    if (it == _i2cEntries.end()) throw std::invalid_argument("setI2CPinTooltip: invalid hash");
+    it->second._pinTooltip = v;
+}
+
+qtac::String _PSOCPlatformConfiguration::getI2CPinCommand(HashType hash) const
+{
+    auto it = _i2cEntries.find(hash);
+    return (it != _i2cEntries.end()) ? it->second._pinCommand : qtac::String();
+}
+void _PSOCPlatformConfiguration::setI2CPinCommand(HashType hash, const qtac::String& v)
+{
+    auto it = _i2cEntries.find(hash);
+    if (it == _i2cEntries.end()) throw std::invalid_argument("setI2CPinCommand: invalid hash");
+    it->second._pinCommand = v;
+}
+
+CommandGroups _PSOCPlatformConfiguration::getI2CPinGroup(HashType hash) const
+{
+    auto it = _i2cEntries.find(hash);
+    return (it != _i2cEntries.end()) ? it->second._commandGroup : eUnknownCommandGroup;
+}
+void _PSOCPlatformConfiguration::setI2CPinGroup(HashType hash, CommandGroups commandGroup)
+{
+    auto it = _i2cEntries.find(hash);
+    if (it == _i2cEntries.end()) throw std::invalid_argument("setI2CPinGroup: invalid hash");
+    it->second._commandGroup = commandGroup;
+}
+
+qtac::String _PSOCPlatformConfiguration::getI2CTabName(HashType hash) const
+{
+    auto it = _i2cEntries.find(hash);
+    return (it != _i2cEntries.end()) ? it->second._tabName : qtac::String();
+}
+void _PSOCPlatformConfiguration::setI2CTabName(HashType hash, const qtac::String& v)
+{
+    auto it = _i2cEntries.find(hash);
+    if (it == _i2cEntries.end()) throw std::invalid_argument("setI2CTabName: invalid hash");
+    it->second._tabName = v;
+}
+
+qtac::Point _PSOCPlatformConfiguration::getI2CPinCellLocation(HashType hash) const
+{
+    auto it = _i2cEntries.find(hash);
+    return (it != _i2cEntries.end()) ? it->second._cellLocation : qtac::Point(-1, -1);
+}
+void _PSOCPlatformConfiguration::setI2CPinCellLocation(HashType hash, const qtac::Point& v)
+{
+    auto it = _i2cEntries.find(hash);
+    if (it == _i2cEntries.end()) throw std::invalid_argument("setI2CPinCellLocation: invalid hash");
+    it->second._cellLocation = v;
 }

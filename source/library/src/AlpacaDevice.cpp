@@ -34,6 +34,7 @@
 
 #include <qtac/AlpacaDevice.h>
 #include <qtac/TACDriveThread.h>
+#include <qtac/STM32Device.h>
 
 #include <algorithm>
 #include <mutex>
@@ -73,8 +74,7 @@ uint32_t _AlpacaDevice::updateAlpacaDevices()
 {
 	_alpacaDevices.clear();
 	std::lock_guard<std::recursive_mutex> lock(_mutex);
-	// Concrete device classes (FTDIDevice) call their own updateAlpacaDevices()
-	// and push into _alpacaDevices. See FTDIDevice::updateAlpacaDevices().
+	STM32Device::updateAlpacaDevices();
 	return static_cast<uint32_t>(_alpacaDevices.size());
 }
 

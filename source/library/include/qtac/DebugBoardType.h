@@ -74,4 +74,56 @@ inline DebugBoardType debugBoardTypeFromString(const qtac::String& boardString)
 	return eUnknownDebugBoard;
 }
 
+// ---------------------------------------------------------------------------
+// PSoC variant enums (mirrors upstream qcommon-console DebugBoardType.h)
+// ---------------------------------------------------------------------------
+
+enum PSOCVariant
+{
+	ePSOCUnknown,
+	ePSOCGPIO,
+	ePSOCGPIOIIC
+};
+
+enum PSOCIICVariant
+{
+	ePSOCIICUnknown,
+	eKTS1622EUAATR,
+	eTCA9534APWR
+};
+
+inline qtac::String psocVariantToString(PSOCVariant v)
+{
+	switch (v)
+	{
+	case ePSOCGPIO:    return "GPIO";
+	case ePSOCGPIOIIC: return "GPIOIIC";
+	default:           return "Unknown";
+	}
+}
+
+inline PSOCVariant psocVariantFromString(const qtac::String& s)
+{
+	if (s == "GPIO")    return ePSOCGPIO;
+	if (s == "GPIOIIC") return ePSOCGPIOIIC;
+	return ePSOCUnknown;
+}
+
+inline qtac::String psocSlaveToString(PSOCIICVariant v)
+{
+	switch (v)
+	{
+	case eKTS1622EUAATR: return "KTS1622EUAATR";
+	case eTCA9534APWR:   return "TCA9534APWR";
+	default:             return "Unknown";
+	}
+}
+
+inline PSOCIICVariant psocSlaveFromString(const qtac::String& s)
+{
+	if (s == "KTS1622EUAATR") return eKTS1622EUAATR;
+	if (s == "TCA9534APWR")   return eTCA9534APWR;
+	return ePSOCIICUnknown;
+}
+
 #endif // QTAC_DEBUGBOARDTYPE_H

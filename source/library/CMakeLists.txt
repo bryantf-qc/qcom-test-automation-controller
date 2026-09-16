@@ -154,6 +154,14 @@ add_library(qtac-core STATIC
     src/AlpacaScript.cpp
     # boost::json header-only compilation unit
     src/boost_json_src.cpp
+    # STM32 (BugHopper V2) drive thread — HID transport
+    src/TACSTM32Command.cpp
+    src/TACSTM32Coder.cpp
+    src/TACSTM32Protocol.cpp
+    src/TACSTM32DriveThread.cpp
+    # STM32 device and platform configuration
+    src/STM32PlatformConfiguration.cpp
+    src/STM32Device.cpp
 )
 
 # Platform-specific SerialPortInfo enumeration
@@ -179,7 +187,7 @@ target_include_directories(qtac-core PUBLIC
 )
 target_compile_definitions(qtac-core PUBLIC BOOST_ALL_NO_LIB)
 
-target_link_libraries(qtac-core PUBLIC serialport)
+target_link_libraries(qtac-core PUBLIC serialport hidapi::hidapi)
 
 # -----------------------------------------------------------------------
 # FTDI D2XX library

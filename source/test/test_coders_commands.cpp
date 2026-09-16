@@ -33,9 +33,11 @@
 #include <qtac/TACLiteCoder.h>
 #include <qtac/TACPSOCCoder.h>
 #include <qtac/TACPIC32CXCoder.h>
+#include <qtac/TACSTM32Coder.h>
 #include <qtac/TACLiteCommand.h>
 #include <qtac/TACPSOCCommand.h>
 #include <qtac/TACPIC32CXCommand.h>
+#include <qtac/TACSTM32Command.h>
 #include <qtac/TACCommandHashes.h>
 #include <qtac/StringUtilities.h>
 #include <qtac/ReceiveInterface.h>
@@ -692,6 +694,190 @@ static void test_tacpic32cx_command_platform_id()
 }
 
 // ===========================================================================
+// TACSTM32Coder — encode
+// ===========================================================================
+
+static void test_tacstm32_encode_setpin_single()
+{
+    qtac::TACSTM32Coder coder;
+
+    // First call: set pin 0 high.
+    // Expected report: [0]=0 (report ID), [1]=0x01 (kCommandGpioSet),
+    //                  [2]=gpioState (0x01), [3]=pinBit (0x01)
+    // Remaining 29 bytes are zero.
+    qtac::Arguments args;
+    args.push_back(true);
+    args.push_back(static_cast<uint32_t>(0));
+    auto result = coder.encode(qtac::ByteArray("SetPin"), args);
+
+    assert(result.size() == 33);
+    assert(static_cast<uint8_t>(result[0]) == 0x00); // report ID
+    assert(static_cast<uint8_t>(result[1]) == 0x01); // kCommandGpioSet
+    assert(static_cast<uint8_t>(result[2]) == 0x01); // gpioState: pin 0 set
+    assert(static_cast<uint8_t>(result[3]) == 0x01); // pinBit: bit 0
+}
+
+static void test_tacstm32_encode_setpin_accumulates_state()
+{
+    qtac::TACSTM32Coder coder;
+
+    // Set pin 0 high.
+    {
+        qtac::Arguments args;
+        args.push_back(true);
+        args.push_back(static_cast<uint32_t>(0));
+        coder.encode(qtac::ByteArray("SetPin"), args);
+    }
+
+    // Now set pin 2 high — gpioState should be 0x01 | 0x04 = 0x05.
+    {
+        qtac::Arguments args;
+        args.push_back(true);
+        args.push_back(static_cast<uint32_t>(2));
+        auto result = coder.encode(qtac::ByteArray("SetPin"), args);
+
+        assert(result.size() == 33);
+        assert(static_cast<uint8_t>(result[2]) == 0x05); // pins 0 and 2 set
+        assert(static_cast<uint8_t>(result[3]) == 0x04); // pinBit for pin 2
+    }
+
+    // Now clear pin 0 — gpioState should drop to 0x04.
+    {
+        qtac::Arguments args;
+        args.push_back(false);
+        args.push_back(static_cast<uint32_t>(0));
+        auto result = coder.encode(qtac::ByteArray("SetPin"), args);
+
+        assert(static_cast<uint8_t>(result[2]) == 0x04); // only pin 2 remains
+        assert(static_cast<uint8_t>(result[3]) == 0x01); // pinBit for pin 0
+    }
+}
+
+static void test_tacstm32_encode_unknown_command_returns_empty()
+{
+    qtac::TACSTM32Coder coder;
+    auto result = coder.encode(qtac::ByteArray("Version"), qtac::Arguments());
+    assert(result.isEmpty());
+}
+
+static void test_tacstm32_encode_insufficient_args_returns_empty()
+{
+    qtac::TACSTM32Coder coder;
+
+    // SetPin with only one argument (needs two).
+    qtac::Arguments args;
+    args.push_back(true);
+    auto result = coder.encode(qtac::ByteArray("SetPin"), args);
+    assert(result.isEmpty());
+}
+
+static void test_tacstm32_decode_noop()
+{
+    // decode() is a no-op for BugHopper V2 — must not crash.
+    qtac::TACSTM32Coder coder;
+    FrameCollector collector;
+    setupCoder(coder, collector);
+
+    coder.decode(qtac::ByteArray("anything"));
+    assert(collector.frames.empty());
+}
+
+static void test_tacstm32_reset_clears_state()
+{
+    qtac::TACSTM32Coder coder;
+
+    // Set pins 0 and 1.
+    for (int pin = 0; pin < 2; ++pin)
+    {
+        qtac::Arguments args;
+        args.push_back(true);
+        args.push_back(static_cast<uint32_t>(pin));
+        coder.encode(qtac::ByteArray("SetPin"), args);
+    }
+
+    coder.reset();
+
+    // After reset, gpioState should be 0 again — setting pin 0 high should
+    // produce gpioState=0x01, not 0x03.
+    qtac::Arguments args;
+    args.push_back(true);
+    args.push_back(static_cast<uint32_t>(0));
+    auto result = coder.encode(qtac::ByteArray("SetPin"), args);
+
+    assert(static_cast<uint8_t>(result[2]) == 0x01);
+}
+
+// ===========================================================================
+// TACSTM32Command — mock send verification
+// ===========================================================================
+
+static void test_tacstm32_command_setpin_args_and_end_transaction()
+{
+    MockSender   sender;
+    MockReceiver receiver;
+    {
+        qtac::TACSTM32Command cmd(&sender, &receiver);
+        cmd.setPinState(2, true);
+    } // destructor fires addEndTransaction
+
+    // Expect: [0] SetPin send, [1] EndTransaction
+    assert(sender.log.size() == 2);
+    assert(sender.log[0].command == "SetPin");
+    assert(sender.log[0].arguments.size() == 2);
+    // arg[0] = state (bool true), arg[1] = pin (uint32 2)
+    assert(sender.log[0].arguments[0].asBool() == true);
+    assert(sender.log[0].arguments[1].asUInt32() == 2u);
+    assert(sender.log[1].isEndTransaction);
+}
+
+static void test_tacstm32_command_setpin_low()
+{
+    MockSender   sender;
+    MockReceiver receiver;
+    {
+        qtac::TACSTM32Command cmd(&sender, &receiver);
+        cmd.setPinState(0, false);
+    }
+
+    assert(sender.log[0].arguments[0].asBool() == false);
+    assert(sender.log[0].arguments[1].asUInt32() == 0u);
+}
+
+static void test_tacstm32_command_multiple_pins_one_transaction()
+{
+    // Multiple setPinState calls before destruction share one transaction.
+    MockSender   sender;
+    MockReceiver receiver;
+    {
+        qtac::TACSTM32Command cmd(&sender, &receiver);
+        cmd.setPinState(0, true);
+        cmd.setPinState(2, false);
+        cmd.setPinState(3, true);
+    }
+
+    // Three SetPin sends + one EndTransaction
+    assert(sender.log.size() == 4);
+    assert(sender.log[0].command == "SetPin");
+    assert(sender.log[1].command == "SetPin");
+    assert(sender.log[2].command == "SetPin");
+    assert(sender.log[3].isEndTransaction);
+}
+
+static void test_tacstm32_command_add_delay()
+{
+    MockSender   sender;
+    MockReceiver receiver;
+    {
+        qtac::TACSTM32Command cmd(&sender, &receiver);
+        cmd.addDelay(100);
+    }
+
+    assert(sender.log[0].isDelay);
+    assert(sender.log[0].delayMs == 100);
+    assert(sender.log.back().isEndTransaction);
+}
+
+// ===========================================================================
 // main
 // ===========================================================================
 
@@ -744,6 +930,20 @@ int main()
     test_tacpic32cx_command_setpin();
     test_tacpic32cx_command_clear_buffer();
     test_tacpic32cx_command_platform_id();
+
+    // TACSTM32Coder
+    test_tacstm32_encode_setpin_single();
+    test_tacstm32_encode_setpin_accumulates_state();
+    test_tacstm32_encode_unknown_command_returns_empty();
+    test_tacstm32_encode_insufficient_args_returns_empty();
+    test_tacstm32_decode_noop();
+    test_tacstm32_reset_clears_state();
+
+    // TACSTM32Command
+    test_tacstm32_command_setpin_args_and_end_transaction();
+    test_tacstm32_command_setpin_low();
+    test_tacstm32_command_multiple_pins_one_transaction();
+    test_tacstm32_command_add_delay();
 
     std::printf("All coder/command tests passed!\n");
     return 0;
