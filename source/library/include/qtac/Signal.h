@@ -50,6 +50,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -80,9 +81,11 @@ public:
         std::lock_guard<std::mutex> lock(_mutex);
         const int id = ++_nextID;
         // Wrap the slot: check the weak_ptr before calling.
-        auto guard = [weak, slot = std::move(slot)](Args... args) {
+        // C++11 compatible: use shared_ptr to capture the moved slot
+        auto slotPtr = std::make_shared<Slot>(std::move(slot));
+        auto guard = [weak, slotPtr](Args... args) {
             if (!weak.expired())
-                slot(std::forward<Args>(args)...);
+                (*slotPtr)(std::forward<Args>(args)...);
         };
         _slots.push_back({id, true, weak, std::move(guard)});
         return id;

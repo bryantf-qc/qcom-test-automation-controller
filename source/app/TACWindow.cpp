@@ -222,9 +222,45 @@ void TACWindow::openPort(const QByteArray& portName)
         twCrashLog(("open() failed: " + dev->getLastError().toStdString()).c_str());
         _ui->_statusBar->showMessage("Failed to open: " + QString(portName)
             + " — " + QString::fromStdString(dev->getLastError().toStdString()));
-        dev->setDriveThread(nullptr);  // clear dangling pointer before deleting
-        delete _driveThread;
-        _driveThread = nullptr;
+
+        // The drive thread was started but failed. Give it a moment to exit cleanly.
+        bool threadExited = false;
+        if (_driveThread && _driveThread->isRunning())
+        {
+            // Wait up to 500ms for the thread to exit
+            for (int i = 0; i < 50 && _driveThread->isRunning(); ++i)
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+
+            if (_driveThread->isRunning())
+            {
+                _driveThread->detachThread();
+                // Don't delete a detached thread - just leak it
+                dev->setDriveThread(nullptr);
+                _driveThread = nullptr;
+                threadExited = false;
+            }
+            else
+            {
+                threadExited = true;
+            }
+        }
+        else
+        {
+            threadExited = true;
+        }
+
+        if (threadExited)
+        {
+            dev->setDriveThread(nullptr);  // clear dangling pointer before deleting
+            if (_driveThread)
+            {
+                delete _driveThread;
+                _driveThread = nullptr;
+            }
+        }
+
         delete _bridge;
         _bridge = nullptr;
         return;
@@ -312,12 +348,15 @@ void TACWindow::shutDown()
 void TACWindow::onConnectClicked()
 {
     TACDeviceSelection dlg(this);
-    if (dlg.exec() != QDialog::Accepted)
+    int result = dlg.exec();
+    if (result != QDialog::Accepted)
         return;
 
     QByteArray port = dlg.selectedPortName();
     if (port.isEmpty())
+    {
         return;
+    }
 
     if (TACApplication::isPortInUse(port))
     {

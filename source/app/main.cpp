@@ -37,6 +37,7 @@
 // ---------------------------------------------------------------------------
 // Crash / diagnostic logger
 // ---------------------------------------------------------------------------
+#ifdef _WIN32
 #include <windows.h>
 #include <dbghelp.h>
 #include <cstdio>
@@ -45,6 +46,12 @@
 #pragma comment(lib, "dbghelp.lib")
 
 FILE* gCrashLog = nullptr;
+#else
+// Stub for non-Windows platforms
+#include <cstdio>
+#include <ctime>
+FILE* gCrashLog = nullptr;
+#endif
 
 static void crashLogOpen()
 {
@@ -63,6 +70,7 @@ static void crashLog(const char* msg)
     fflush(gCrashLog);
 }
 
+#ifdef _WIN32
 static LONG CALLBACK vectoredExceptionHandler(PEXCEPTION_POINTERS ep)
 {
     if (!gCrashLog) return EXCEPTION_CONTINUE_SEARCH;
@@ -127,13 +135,16 @@ static LONG CALLBACK vectoredExceptionHandler(PEXCEPTION_POINTERS ep)
     fflush(gCrashLog);
     return EXCEPTION_CONTINUE_SEARCH; // let Windows handle it normally
 }
+#endif // _WIN32
 
 // ---------------------------------------------------------------------------
 
 int main(int argc, char* argv[])
 {
     crashLogOpen();
+#ifdef _WIN32
     AddVectoredExceptionHandler(1, vectoredExceptionHandler);
+#endif
 
     TACApplication app(argc, argv);
 

@@ -57,7 +57,7 @@ struct PSOCPinData
     PSOCPinData(PinID pin)
     {
         _pin = pin;
-        _hash = strHash(qtac::String::number(static_cast<uint64_t>(pin)));
+        _hash = strHash(qtac::String::number(static_cast<unsigned long long>(pin)));
     }
 
     void clear() { *this = PSOCPinData(); }

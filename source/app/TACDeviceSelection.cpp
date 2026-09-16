@@ -71,6 +71,49 @@ TACDeviceSelection::~TACDeviceSelection()
     delete _ui;
 }
 
+void TACDeviceSelection::accept()
+{
+    // Set the closing flag FIRST to prevent any ongoing refresh from updating devices
+    _closing = true;
+
+    // Stop the timer and disconnect to prevent race conditions
+    _timer->stop();
+    disconnect(_timer, &QTimer::timeout, this, &TACDeviceSelection::refreshDevices);
+
+    // Capture the currently selected row before accepting.
+    // On Linux, if the user selects a row and clicks OK, the clicked
+    // signal may not have been triggered, so we must check selection here.
+    QList<QTableWidgetItem*> sel = _ui->_tacDevices->selectedItems();
+    if (!sel.isEmpty())
+    {
+        _selectedPort = sel.first()->text().toLatin1();
+    }
+
+    if (_selectedPort.isEmpty())
+    {
+        // Don't accept if nothing is selected
+        // Clear closing flag, reconnect and restart timer since we're not accepting
+        _closing = false;
+        connect(_timer, &QTimer::timeout, this, &TACDeviceSelection::refreshDevices);
+        _timer->start(2500);
+        return;
+    }
+
+    QDialog::accept();
+}
+
+void TACDeviceSelection::reject()
+{
+    // Set the closing flag to prevent any ongoing refresh
+    _closing = true;
+
+    // Stop the timer to prevent race conditions
+    _timer->stop();
+    disconnect(_timer, &QTimer::timeout, this, &TACDeviceSelection::refreshDevices);
+
+    QDialog::reject();
+}
+
 void TACDeviceSelection::onTableClicked(const QModelIndex& index)
 {
     QTableWidgetItem* item = _ui->_tacDevices->item(index.row(), 0);
@@ -95,6 +138,10 @@ void TACDeviceSelection::onTableDoubleClicked(const QModelIndex& index)
 
 void TACDeviceSelection::refreshDevices()
 {
+    // Don't update devices if the dialog is closing
+    if (_closing)
+        return;
+
     // Remember selection so we can restore it after refresh.
     QString previousPort;
     QList<QTableWidgetItem*> sel = _ui->_tacDevices->selectedItems();
@@ -129,7 +176,13 @@ void TACDeviceSelection::refreshDevices()
         _ui->_tacDevices->setItem(i, 2, makeItem(QtAdapter::toQString(dev->serialNumber())));
 
         if (port == previousPort)
+        {
             _ui->_tacDevices->selectRow(i);
+            // On Linux, selectRow() does not trigger the clicked signal,
+            // so we must explicitly restore _selectedPort here.
+            _selectedPort = port.toLatin1();
+            setOkEnabled(true);
+        }
     }
 
     _ui->_tacDevices->blockSignals(false);

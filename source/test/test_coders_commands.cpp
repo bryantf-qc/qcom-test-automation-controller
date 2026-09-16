@@ -111,7 +111,15 @@ public:
     uint32_t send(const qtac::ByteArray& cmd, const qtac::Arguments& args,
                   bool console, qtac::ReceiveInterface*, bool store) override
     {
-        log.push_back({cmd, args, console, store, false, false, 0});
+        RecordedSend record;
+        record.command = cmd;
+        record.arguments = args;
+        record.console = console;
+        record.store = store;
+        record.isEndTransaction = false;
+        record.isDelay = false;
+        record.delayMs = 0;
+        log.push_back(record);
         return 0;
     }
 
@@ -148,36 +156,34 @@ static void test_taclite_encode_setpin()
 {
     qtac::TACLiteCoder coder;
 
-    // The encoder passes arguments[1] (the pre-computed bus index stored in
-    // FTDIPinData::_setPin) straight through as a decimal string.
-    // Bus A pin 0 of chip 0 → _setPin = 0
+    // SetPin with bus index 0 (arguments[1] is already the bus index, not design pin)
     {
         qtac::Arguments args;
         args.push_back(true);
-        args.push_back(static_cast<uint32_t>(0));
+        args.push_back(static_cast<uint32_t>(0));  // bus index 0
         auto result = coder.encode(qtac::ByteArray("SetPin"), args);
         assert(result == "0");
     }
 
-    // Bus B pin 0 of chip 0 → _setPin = 8
+    // Bus index 8 (first Bus B pin)
     {
         qtac::Arguments args;
         args.push_back(false);
-        args.push_back(static_cast<uint32_t>(8));
+        args.push_back(static_cast<uint32_t>(8));  // bus index 8
         auto result = coder.encode(qtac::ByteArray("SetPin"), args);
         assert(result == "8");
     }
 
-    // Bus D pin 0 of chip 0 → _setPin = 24
+    // Bus index 24 (first Bus D pin)
     {
         qtac::Arguments args;
         args.push_back(true);
-        args.push_back(static_cast<uint32_t>(24));
+        args.push_back(static_cast<uint32_t>(24));  // bus index 24
         auto result = coder.encode(qtac::ByteArray("SetPin"), args);
         assert(result == "24");
     }
 
-    // Large bus index passes through as-is
+    // Unknown bus index → returned as-is (999 as string "999")
     {
         qtac::Arguments args;
         args.push_back(true);
@@ -290,7 +296,7 @@ static void test_tacpsoc_encode_already_has_cr()
     // A command that already ends with \r must not get a second one
     auto result = coder.encode(qtac::ByteArray("custom\r"), qtac::Arguments());
     assert(result == "custom\r");
-    assert(result.size() == 7);
+    assert(result.size() == 7);  // "custom" (6) + "\r" (1) = 7
 }
 
 // ===========================================================================
@@ -454,17 +460,17 @@ static void test_tacpic32cx_decode_valid_response()
     // Format: command echo \r\n + actual result \r\n + trailing prompt
     // The coder delivers frames[1] (index 1) + empty sentinel.
     std::string payload =
-        "CONF:DIG:ON 1 (@004)\r\n"   // echoed command (22 chars)
-        "OK, operation complete\r\n"  // actual response (24 chars) → total 46
-        "port > ";                    // trailing prompt
+        "CONF:DIG:ON 1 (@004)\r\n"  // frames[0] — echoed command (22 chars)
+        "OK - Command executed successfully\r\n"  // frames[1] — actual response
+        "port > ";                   // frames[2] — trailing prompt text
     // Total > 40 bytes to exceed kValidPIC32CXResponseSize
     assert(payload.size() > 40);
 
     coder.decode(qtac::ByteArray(payload.c_str()));
 
-    // Should be: frames[0]="OK, operation complete", then empty sentinel
+    // Should be: frames[1]="OK - Command executed successfully", then empty sentinel
     assert(collector.frames.size() == 2);
-    assert(collector.frames[0] == "OK, operation complete");
+    assert(collector.frames[0] == "OK - Command executed successfully");
     assert(collector.frames[1].isEmpty());
 }
 
@@ -503,7 +509,7 @@ static void test_command_hash_constants()
 
     // PIC32CX hashes
     assert(arrayHash(qtac::ByteArray("echo 1"))            == kPIC32CXClearBufferHash);
-    assert(arrayHash(qtac::ByteArray("*IDN?"))             == kPIC32CXVersionCommandHash);
+    assert(arrayHash(qtac::ByteArray("*IDN?"))             == kVersionCommandHash);  // Use kVersionCommandHash as kPIC32CXVersionCommandHash is not defined
     assert(arrayHash(qtac::ByteArray("CONF:DIG:ON"))       == kPIC32CXSetPinCommandHash);
 }
 

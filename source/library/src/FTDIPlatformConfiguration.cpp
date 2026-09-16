@@ -755,7 +755,7 @@ void _FTDIPlatformConfiguration::write(json_t& j)
 		boost::json::object pinData;
 		pinData[kChipIndex]    = pe._chipIndex;
 		pinData[kBus]          = std::string(1, pe._bus);
-		pinData[kPinNumber]    = qtac::String::number(static_cast<uint64_t>(pe._chipPin)).toStdString();
+		pinData[kPinNumber]    = qtac::String::number(static_cast<unsigned long long>(pe._chipPin)).toStdString();
 		pinData[kEnabled]      = pe._enabled;
 		pinData[kInput]        = pe._input;
 		pinData[kName]         = pe._pinLabel.toStdString();
