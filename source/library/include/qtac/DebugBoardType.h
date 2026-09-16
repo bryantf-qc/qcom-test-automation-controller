@@ -43,7 +43,9 @@ enum DebugBoardType
 	eSpiderBoard,
 	ePSOC,
 	eFTDI,
-	ePIC32CXAuto
+	ePIC32CXAuto,
+	eFT232H,
+	eSTM32
 };
 
 inline qtac::String debugBoardTypeToString(DebugBoardType type)
@@ -54,6 +56,8 @@ inline qtac::String debugBoardTypeToString(DebugBoardType type)
 	case ePSOC:         return "PSOC";
 	case eFTDI:         return "FTDI";
 	case ePIC32CXAuto:  return "PIC32CXAuto";
+	case eFT232H:       return "FT232H";
+	case eSTM32:        return "STM32";
 	default:            return "Unknown";
 	}
 }
@@ -65,6 +69,8 @@ inline DebugBoardType debugBoardTypeFromString(const qtac::String& boardString)
 	if (lower == "psoc")        return ePSOC;
 	if (lower == "ftdi")        return eFTDI;
 	if (lower == "pic32cxauto") return ePIC32CXAuto;
+	if (lower == "ft232h")      return eFT232H;
+	if (lower == "stm32")       return eSTM32;
 	return eUnknownDebugBoard;
 }
 

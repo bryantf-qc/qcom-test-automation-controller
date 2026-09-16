@@ -62,6 +62,12 @@ public:
 
     void setPinSets(FTDIPinSets pinsets) override { _pinsets = pinsets; }
 
+    void setInvertMask(uint8_t mask)
+    {
+        if (_ftdiChipset)
+            _ftdiChipset->setInvertMask(mask);
+    }
+
     // DriveThread
     void run() override;
 

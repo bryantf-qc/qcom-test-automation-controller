@@ -263,6 +263,11 @@ FTDIChipset _FTDIChipset::getDevice(const qtac::ByteArray& portName)
 qtac::ByteArray _FTDIChipset::normalizeSerialNumber(const qtac::ByteArray& segmentSerialNumber)
 {
 	qtac::ByteArray sn{segmentSerialNumber};
+	// eFTDI devices have a bus suffix ('A','B','C','D') appended to the base
+	// serial number — strip the last character to get the base.
+	// eFT232H (BugHopper V1) does NOT have this suffix, so it is handled by
+	// the board-type-aware traversal code; here we always strip for backward
+	// compatibility with the existing eFTDI path.
 	if (!sn.isEmpty())
 		sn.remove(sn.length() - 1, 1);
 	return sn;
@@ -271,8 +276,20 @@ qtac::ByteArray _FTDIChipset::normalizeSerialNumber(const qtac::ByteArray& segme
 bool _FTDIChipset::open(FTDIPinSets pinsets)
 {
 	bool result{false};
-	uint8_t mask = 0xff;
-	uint8_t mode = FT_BITMODE_ASYNC_BITBANG;
+	uint8_t mask;
+	uint8_t mode;
+
+	if (_boardType == eFT232H)
+	{
+		mask = 0x0f;
+		mode = FT_BITMODE_CBUS_BITBANG;
+	}
+	else
+	{
+		mask = 0xff;
+		mode = FT_BITMODE_ASYNC_BITBANG;
+	}
+
 	FT_STATUS ftStatus;
 
 	if (testFlag(pinsets, eA) && !_aSerialNumber.isEmpty())
@@ -431,8 +448,22 @@ bool _FTDIChipset::write(uint8_t pin, bool state)
 
 	if (handle != nullptr && charBit != nullptr)
 	{
-		DWORD byteWritten;
-		FT_STATUS status = FT_Write(handle, charBit->value(), 1, &byteWritten);
+		FT_STATUS status{FT_OTHER_ERROR};
+
+		if (_boardType == eFT232H)
+		{
+			uint8_t logicalValue = *charBit->value();
+			uint8_t writeValue   = logicalValue ^ _invertMask;
+			uint8_t cbusValue    = static_cast<uint8_t>((0x0F << 4) | writeValue);
+
+			status = FT_SetBitMode(handle, cbusValue, FT_BITMODE_CBUS_BITBANG);
+		}
+		else
+		{
+			DWORD byteWritten;
+			status = FT_Write(handle, charBit->value(), 1, &byteWritten);
+		}
+
 		if (status == FT_OK) return true;
 		_lastError = ("FTDI Write Failed: " + _FTDIChipset::ftidStatusToString(status) + "\n").toLatin1();
 	}
@@ -541,7 +572,12 @@ void _FTDIChipset::linuxTraversal()
 			                                  SerialNumber, Description, &ftHandleTemp);
 
 			qtac::String desc(Description);
-			qtac::ByteArray usbDescriptor = desc.left(desc.length() - 2).toLatin1();
+
+			// BugHopper (FT232H) devices do not carry a bus-letter suffix.
+			bool isBugHopper = desc.endsWith("BugHopper");
+			qtac::ByteArray usbDescriptor = isBugHopper
+			    ? desc.toLatin1()
+			    : desc.left(desc.length() - 2).toLatin1();
 
 			if (PlatformContainer::fromUSBDescriptor(usbDescriptor) != MICRO_EPM_BOARD_ID_UNKNOWN
 			    || usbDescriptor.startsWith("ALPACA-LITE "))
@@ -552,8 +588,13 @@ void _FTDIChipset::linuxTraversal()
 				// is still usable with the default pin configuration.
 				if (platformID == MICRO_EPM_BOARD_ID_UNKNOWN && usbDescriptor.startsWith("ALPACA-LITE "))
 					platformID = ALPACA_LITE_ID;
+
+				DebugBoardType boardType = PlatformContainer::getDebugBoardType(platformID);
+
 				qtac::ByteArray deviceSerialNumber(SerialNumber);
-				qtac::ByteArray serialNumber = normalizeSerialNumber(deviceSerialNumber);
+				qtac::ByteArray serialNumber = (boardType == eFT232H)
+				    ? deviceSerialNumber
+				    : normalizeSerialNumber(deviceSerialNumber);
 
 				if (serialNumber.isEmpty()) continue;
 
@@ -567,6 +608,7 @@ void _FTDIChipset::linuxTraversal()
 				{
 					ftdiChipset = FTDIChipset(new _FTDIChipset);
 					ftdiChipset->setPlatformID(platformID);
+					ftdiChipset->setBoardType(boardType);
 					_ftdiChipsetList.append(ftdiChipset);
 				}
 
@@ -574,12 +616,20 @@ void _FTDIChipset::linuxTraversal()
 				if (ftdiChipset->_usbDescriptor.isEmpty())
 					ftdiChipset->_usbDescriptor = usbDescriptor;
 
-				switch (segment)
+				if (isBugHopper)
 				{
-				case 'A': case 'a': ftdiChipset->setASerialNumber(deviceSerialNumber); break;
-				case 'B': case 'b': ftdiChipset->setBSerialNumber(deviceSerialNumber); break;
-				case 'C': case 'c': ftdiChipset->setCSerialNumber(deviceSerialNumber); break;
-				case 'D': case 'd': ftdiChipset->setDSerialNumber(deviceSerialNumber); break;
+					ftdiChipset->setASerialNumber(deviceSerialNumber);
+				}
+				else
+				{
+					switch (segment)
+					{
+					case 'A': case 'a': ftdiChipset->setASerialNumber(deviceSerialNumber); break;
+					case 'B': case 'b': ftdiChipset->setBSerialNumber(deviceSerialNumber); break;
+					case 'C': case 'c':
+					case 'R': case 'r': ftdiChipset->setCSerialNumber(deviceSerialNumber); break;
+					case 'D': case 'd': ftdiChipset->setDSerialNumber(deviceSerialNumber); break;
+					}
 				}
 				ftdiChipset->_active = true;
 			}
@@ -612,7 +662,14 @@ void _FTDIChipset::windowsTraversal()
 		for (DWORD i = 0; i < deviceCount; ++i)
 		{
 			qtac::String desc(devInfoList[i].Description);
-			qtac::ByteArray usbDescriptor = desc.left(desc.length() - 2).toLatin1();
+
+			// BugHopper (FT232H) devices do not carry a bus-letter suffix in
+			// their description — the whole description is the USB descriptor.
+			// All other FTDI devices have a 2-character segment suffix (e.g. " A").
+			bool isBugHopper = desc.endsWith("BugHopper");
+			qtac::ByteArray usbDescriptor = isBugHopper
+			    ? desc.toLatin1()
+			    : desc.left(desc.length() - 2).toLatin1();
 
 			if (PlatformContainer::fromUSBDescriptor(usbDescriptor) != MICRO_EPM_BOARD_ID_UNKNOWN
 			    || usbDescriptor.startsWith("ALPACA-LITE "))
@@ -623,8 +680,15 @@ void _FTDIChipset::windowsTraversal()
 				// is still usable with the default pin configuration.
 				if (platformID == MICRO_EPM_BOARD_ID_UNKNOWN && usbDescriptor.startsWith("ALPACA-LITE "))
 					platformID = ALPACA_LITE_ID;
+
+				DebugBoardType boardType = PlatformContainer::getDebugBoardType(platformID);
+
 				qtac::ByteArray deviceSerialNumber(devInfoList[i].SerialNumber);
-				qtac::ByteArray serialNumber = normalizeSerialNumber(deviceSerialNumber);
+				// eFTDI devices append a bus letter to the serial number; strip it.
+				// eFT232H (BugHopper) serial numbers have no such suffix.
+				qtac::ByteArray serialNumber = (boardType == eFT232H)
+				    ? deviceSerialNumber
+				    : normalizeSerialNumber(deviceSerialNumber);
 
 				if (serialNumber.isEmpty()) continue;
 
@@ -638,6 +702,7 @@ void _FTDIChipset::windowsTraversal()
 				{
 					ftdiChipset = FTDIChipset(new _FTDIChipset);
 					ftdiChipset->setPlatformID(platformID);
+					ftdiChipset->setBoardType(boardType);
 					_ftdiChipsetList.append(ftdiChipset);
 				}
 
@@ -645,12 +710,22 @@ void _FTDIChipset::windowsTraversal()
 				if (ftdiChipset->_usbDescriptor.isEmpty())
 					ftdiChipset->_usbDescriptor = usbDescriptor;
 
-				switch (segment)
+				// BugHopper (FT232H) has a single channel; map it to 'A'.
+				// Standard FTDI devices use A/B/C/D suffix letters.
+				if (isBugHopper)
 				{
-				case 'A': case 'a': ftdiChipset->setASerialNumber(deviceSerialNumber); break;
-				case 'B': case 'b': ftdiChipset->setBSerialNumber(deviceSerialNumber); break;
-				case 'C': case 'c': ftdiChipset->setCSerialNumber(deviceSerialNumber); break;
-				case 'D': case 'd': ftdiChipset->setDSerialNumber(deviceSerialNumber); break;
+					ftdiChipset->setASerialNumber(deviceSerialNumber);
+				}
+				else
+				{
+					switch (segment)
+					{
+					case 'A': case 'a': ftdiChipset->setASerialNumber(deviceSerialNumber); break;
+					case 'B': case 'b': ftdiChipset->setBSerialNumber(deviceSerialNumber); break;
+					case 'C': case 'c':
+					case 'R': case 'r': ftdiChipset->setCSerialNumber(deviceSerialNumber); break;
+					case 'D': case 'd': ftdiChipset->setDSerialNumber(deviceSerialNumber); break;
+					}
 				}
 				ftdiChipset->_active = true;
 

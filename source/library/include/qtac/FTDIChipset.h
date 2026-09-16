@@ -107,6 +107,10 @@ public:
 
 	bool write(uint8_t pin, bool state);
 
+	DebugBoardType boardType() const { return _boardType; }
+	void setBoardType(DebugBoardType boardType) { _boardType = boardType; }
+	void setInvertMask(uint8_t mask) { _invertMask = mask; }
+
 	// made public to allow traversal code to set these directly
 	bool            _active{false};
 	qtac::ByteArray _usbDescriptor;
@@ -126,6 +130,8 @@ private:
 	HashType        _hash{0};
 	PlatformID      _platformID{ALPACA_LITE_ID};
 	bool            _new{true};
+	DebugBoardType  _boardType{eFTDI};
+	uint8_t         _invertMask{0};
 	CharBit         _aPins;
 	CharBit         _bPins;
 	CharBit         _cPins;

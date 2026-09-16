@@ -34,6 +34,7 @@
 
 #include <qtac/FTDIDevice.h>
 #include <qtac/FTDIChipset.h>
+#include <qtac/TACLiteDriveThread.h>
 #include <qtac/StringUtilities.h>
 #include <qtac/PlatformID.h>
 #include <qtac/TcnfLoader.h>
@@ -180,7 +181,7 @@ uint32_t FTDIDevice::updateAlpacaDevices()
 			FTDIDevice* ftdiDevice = new FTDIDevice;
 
 			ftdiDevice->_active          = true;
-			ftdiDevice->_boardType       = eFTDI;
+			ftdiDevice->_boardType       = ftdiChipset->boardType();
 			ftdiDevice->_portName        = ftdiChipset->portName();
 			ftdiDevice->_hash            = hash;
 			ftdiDevice->_chipVersion     = 10000;
@@ -255,7 +256,22 @@ bool FTDIDevice::open()
 	// Mirrors legacy FTDIDevice::open() which calls setPinSets(getPinSet(0)).
 	// Must be set before start() so FTDIChipset::open() uses the correct mask.
 	if (_ftdiPlatformConfiguration != nullptr)
+	{
 		_driveThread->setPinSets(_ftdiPlatformConfiguration->getPinSet(0));
+
+		// For FT232H (BugHopper V1) devices, build an invert mask from pins
+		// marked as inverted in the platform configuration.
+		if (_boardType == eFT232H)
+		{
+			uint8_t invertMask = 0;
+			for (const auto& pin : _ftdiPlatformConfiguration->getActivePins())
+			{
+				if (pin._inverted)
+					invertMask |= static_cast<uint8_t>(1 << (pin._setPin % 8));
+			}
+			static_cast<qtac::TACLiteDriveThread*>(_driveThread)->setInvertMask(invertMask);
+		}
+	}
 
 	_driveThread->start();
 

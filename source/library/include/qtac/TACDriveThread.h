@@ -134,6 +134,7 @@ public:
                              ReceiveInterface* receiveInterface = nullptr, bool shouldStore = true) = 0;
 
     virtual void setPinState(uint64_t pin, bool state) = 0;
+    virtual void setAddressPinState(const qtac::ByteArray& i2cAddress, uint16_t pin, bool state) {}
     virtual void setPinSets(FTDIPinSets /*pinsets*/) {} // no-op for non-FTDI threads
     virtual void sendCommandSequence(CommandEntries& commandEntries)    = 0;
 

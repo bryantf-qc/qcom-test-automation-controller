@@ -77,7 +77,7 @@ TACLiteDriveThread::TACLiteDriveThread(HashType hash)
     _firmwareRevision = 1;
     _description     = "VTP Port";
     _uuid            = "FTDI - No UUID";
-    _hardwareType    = eFTDI;
+    _hardwareType    = _ftdiChipset->boardType();
 
     setSerialNumber(_ftdiChipset->serialNumber().toStdString());
     setPortName(_ftdiChipset->portName());

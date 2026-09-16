@@ -94,6 +94,17 @@ void TACPSOCCommand::setPinState(uint16_t pin, bool state)
     send(kSetPinCommand, args, false, false);
 }
 
+static constexpr uint16_t kMaxI2CPins{8};
+
+void TACPSOCCommand::setAddressPinState(const qtac::ByteArray& i2cAddress, uint16_t pin, bool state)
+{
+    Arguments args;
+    args.push_back(i2cAddress.toStdString());
+    args.push_back(static_cast<uint32_t>(pin % kMaxI2CPins));
+    args.push_back(state);
+    send(kI2CWriteRegisterCommand, args, false, false);
+}
+
 void TACPSOCCommand::setName(const qtac::ByteArray& newName)
 {
     Arguments args;

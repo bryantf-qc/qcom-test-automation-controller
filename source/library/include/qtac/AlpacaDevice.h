@@ -109,6 +109,7 @@ public:
 	virtual qtac::ByteArray getHelp();
 
 	virtual void setPinState(PinID pin, bool state);
+	virtual void setAddressPinState(const qtac::ByteArray& i2cAddress, uint16_t pin, bool state);
 	void setWaitForCompletion();
 	bool active();
 	HashType hash();

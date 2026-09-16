@@ -59,6 +59,7 @@ public:
     void uuid();
 
     void setPinState(uint16_t pin, bool state);
+    void setAddressPinState(const qtac::ByteArray& i2cAddress, uint16_t pin, bool state);
 
     void setName(const qtac::ByteArray& newName);
 

@@ -50,6 +50,8 @@ using PlatformID = uint32_t;
 const PlatformID MICRO_EPM_BOARD_ID_UNKNOWN{0};
 const PlatformID ALPACA_LITE_ID{13};
 const PlatformID ALPACA_PIC32CX_ID{50};
+const PlatformID ALPACA_BUGHOPPER_ID{80};
+const PlatformID ALPACA_STM32_ID{95};
 
 struct _PlatformEntry
 {

@@ -177,6 +177,15 @@ void TACPSOCDriveThread::setPinState(uint64_t pin, bool state)
     waitForCompletion();
 }
 
+void TACPSOCDriveThread::setAddressPinState(const qtac::ByteArray& i2cAddress, uint16_t pin, bool state)
+{
+    {
+        TACPSOCCommand cmd(this, this);
+        cmd.setAddressPinState(i2cAddress, pin, state);
+    }
+    waitForCompletion();
+}
+
 void TACPSOCDriveThread::sendCommandSequence(CommandEntries& commandEntries)
 {
     TACPSOCCommand cmd(this, this);

@@ -261,6 +261,13 @@ void _AlpacaDevice::setPinState(PinID pin, bool state)
 		dt->setPinState(pin, state);
 }
 
+void _AlpacaDevice::setAddressPinState(const qtac::ByteArray& i2cAddress, uint16_t pin, bool state)
+{
+	qtac::TACDriveThread* dt = _driveThread ? _driveThread : _serialDriveThread;
+	if (dt != nullptr && active())
+		dt->setAddressPinState(i2cAddress, pin, state);
+}
+
 void _AlpacaDevice::setWaitForCompletion()
 {
 	qtac::TACDriveThread* dt = _driveThread ? _driveThread : _serialDriveThread;
