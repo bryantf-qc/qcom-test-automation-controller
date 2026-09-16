@@ -146,40 +146,42 @@ static void test_taclite_encode_setpin()
 {
     qtac::TACLiteCoder coder;
 
-    // SetPin with design-pin 16 → bus index 0
+    // The encoder passes arguments[1] (the pre-computed bus index stored in
+    // FTDIPinData::_setPin) straight through as a decimal string.
+    // Bus A pin 0 of chip 0 → _setPin = 0
     {
         qtac::Arguments args;
         args.push_back(true);
-        args.push_back(static_cast<uint32_t>(16));
+        args.push_back(static_cast<uint32_t>(0));
         auto result = coder.encode(qtac::ByteArray("SetPin"), args);
         assert(result == "0");
     }
 
-    // Design-pin 26 → bus index 8 (first Bus B pin)
+    // Bus B pin 0 of chip 0 → _setPin = 8
     {
         qtac::Arguments args;
         args.push_back(false);
-        args.push_back(static_cast<uint32_t>(26));
+        args.push_back(static_cast<uint32_t>(8));
         auto result = coder.encode(qtac::ByteArray("SetPin"), args);
         assert(result == "8");
     }
 
-    // Design-pin 48 → bus index 24 (first Bus D pin)
+    // Bus D pin 0 of chip 0 → _setPin = 24
     {
         qtac::Arguments args;
         args.push_back(true);
-        args.push_back(static_cast<uint32_t>(48));
+        args.push_back(static_cast<uint32_t>(24));
         auto result = coder.encode(qtac::ByteArray("SetPin"), args);
         assert(result == "24");
     }
 
-    // Unknown design-pin → 0xFFFFFFF as string
+    // Large bus index passes through as-is
     {
         qtac::Arguments args;
         args.push_back(true);
         args.push_back(static_cast<uint32_t>(999));
         auto result = coder.encode(qtac::ByteArray("SetPin"), args);
-        assert(result == std::to_string(0xFFFFFFF).c_str());
+        assert(result == "999");
     }
 
     // Non-SetPin command → "Invalid"
@@ -286,7 +288,7 @@ static void test_tacpsoc_encode_already_has_cr()
     // A command that already ends with \r must not get a second one
     auto result = coder.encode(qtac::ByteArray("custom\r"), qtac::Arguments());
     assert(result == "custom\r");
-    assert(result.size() == 8);
+    assert(result.size() == 7);
 }
 
 // ===========================================================================
@@ -450,17 +452,17 @@ static void test_tacpic32cx_decode_valid_response()
     // Format: command echo \r\n + actual result \r\n + trailing prompt
     // The coder delivers frames[1] (index 1) + empty sentinel.
     std::string payload =
-        "CONF:DIG:ON 1 (@004)\r\n"  // frames[0] — echoed command (22 chars)
-        "OK\r\n"                     // frames[1] — actual response
-        "port > ";                   // frames[2] — trailing prompt text
+        "CONF:DIG:ON 1 (@004)\r\n"   // echoed command (22 chars)
+        "OK, operation complete\r\n"  // actual response (24 chars) → total 46
+        "port > ";                    // trailing prompt
     // Total > 40 bytes to exceed kValidPIC32CXResponseSize
     assert(payload.size() > 40);
 
     coder.decode(qtac::ByteArray(payload.c_str()));
 
-    // Should be: frames[1]="OK", then empty sentinel
+    // Should be: frames[0]="OK, operation complete", then empty sentinel
     assert(collector.frames.size() == 2);
-    assert(collector.frames[0] == "OK");
+    assert(collector.frames[0] == "OK, operation complete");
     assert(collector.frames[1].isEmpty());
 }
 
