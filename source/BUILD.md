@@ -7,7 +7,7 @@
 | Visual Studio Build Tools | 2022 | MSVC x64 toolchain (`cl.exe`) |
 | CMake | 3.22+ | Must be on `PATH` |
 | Ninja | any | Must be on `PATH` |
-| Qt | 6.11.1 | Installed to `C:\Qt\6.11.1\msvc2022_64\` |
+| Qt | 6.9+ | Any `msvc2022_64` kit under `C:\Qt\`; or set `QTDIR` env var |
 | FTDI CDM driver SDK | 2.12.36+ | See §FTDI Bootstrap below |
 
 ---
@@ -44,10 +44,16 @@ cd C:\ProdTools\qcom-test-automation-controller
 
 Performs:
 1. Locates VS2022 via `vswhere.exe` and loads the MSVC x64 environment
-2. Adds Qt `bin\` to `PATH`
+2. Locates Qt: uses `QTDIR` env var if set, otherwise searches `C:\Qt\` for any `msvc2022_64` kit
 3. `cmake -S . -B build\Release -DCMAKE_PREFIX_PATH=<Qt> -G Ninja -DCMAKE_BUILD_TYPE=Release`
 4. `cmake --build build\Release --target qtac-app`
 5. `cmake --build build\Release --target TACDev`
+
+To use a non-default Qt install:
+```powershell
+$env:QTDIR = 'C:\Qt\6.11.1\msvc2022_64'
+.\build_app.ps1
+```
 
 Outputs:
 ```

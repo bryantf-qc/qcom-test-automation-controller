@@ -1,7 +1,8 @@
-$qtbin = 'C:\Qt\6.11.1\msvc2022_64\bin'
-$appDir = 'C:\ProdTools\qtac-refactor\build\Release'
-$ftdiBin = 'C:\ProdTools\qtac-refactor\__Builds\x64\Release\bin'
-$confDir = 'C:\ProdTools\qtac-refactor\configurations'
+. "$PSScriptRoot\env_setup.ps1"
+
+$appDir  = "$PSScriptRoot\build\Release"
+$ftdiBin = "$PSScriptRoot\__Builds\x64\Release\bin"
+$confDir = "$PSScriptRoot\configurations"
 
 # Copy ftd2xx.dll next to exe
 Copy-Item "$ftdiBin\ftd2xx.dll" $appDir -Force
@@ -16,6 +17,6 @@ Copy-Item "$confDir\DefaultScript.txt" $appDir -Force
 Write-Output "Copied DefaultScript.txt"
 
 # Run windeployqt to copy Qt DLLs
-$windeployqt = "$qtbin\windeployqt.exe"
+$windeployqt = "$qtRoot\bin\windeployqt.exe"
 & $windeployqt --release "$appDir\qtac-app.exe"
 Write-Output "windeployqt done, exit: $LASTEXITCODE"

@@ -1,5 +1,5 @@
-$ErrorActionPreference = 'Continue'
-$root = $PSScriptRoot
+# env_setup.ps1 — dot-source this to load MSVC + Qt into the current session.
+# Usage: . "$PSScriptRoot\env_setup.ps1"
 
 # Locate VS via vswhere
 $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
@@ -14,7 +14,7 @@ if (Test-Path $vswhere) {
         "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
     ) | Where-Object { Test-Path $_ } | Select-Object -First 1
 }
-if (-not $vcvars -or -not (Test-Path $vcvars)) { Write-Error "vcvars64.bat not found - is VS2022 installed?"; exit 1 }
+if (-not $vcvars -or -not (Test-Path $vcvars)) { throw "vcvars64.bat not found - is VS2022 installed?" }
 
 # Locate Qt — honor QTDIR env var, else search standard install locations
 if ($env:QTDIR -and (Test-Path "$env:QTDIR\bin\qmake.exe")) {
@@ -25,8 +25,7 @@ if ($env:QTDIR -and (Test-Path "$env:QTDIR\bin\qmake.exe")) {
               Sort-Object FullName -Descending |
               Select-Object -First 1 -ExpandProperty FullName
 }
-if (-not $qtRoot) { Write-Error "Qt not found. Set QTDIR or install Qt to C:\Qt\"; exit 1 }
-$qtbin = "$qtRoot\bin"
+if (-not $qtRoot) { throw "Qt not found. Set QTDIR or install Qt to C:\Qt\" }
 
 # Import MSVC environment
 $envLines = cmd /c "`"$vcvars`" && set" 2>&1
@@ -34,25 +33,7 @@ $envLines | Where-Object { $_ -match '^[A-Za-z_][A-Za-z0-9_]+=.' } | ForEach-Obj
     $kv = $_ -split '=', 2
     if ($kv.Count -eq 2) { [System.Environment]::SetEnvironmentVariable($kv[0], $kv[1]) }
 }
-$env:PATH = "$qtbin;$env:PATH"
-Write-Output "MSVC env loaded from: $vcvars"
-Write-Output "Qt root: $qtRoot"
-Write-Output "cl.exe: $((Get-Command cl.exe -ErrorAction SilentlyContinue).Source)"
+$env:PATH = "$qtRoot\bin;$env:PATH"
 
-Set-Location $root
-
-# Configure
-Write-Output "--- Configuring ---"
-& cmake -S . -B "build\Release" "-DCMAKE_PREFIX_PATH=$qtRoot" -G Ninja -DCMAKE_BUILD_TYPE=Release
-if ($LASTEXITCODE -ne 0) { Write-Error "Configure failed"; exit 1 }
-
-# Build qtac-app and TACDev
-Write-Output "--- Building qtac-app ---"
-& cmake --build "build\Release" --target qtac-app
-if ($LASTEXITCODE -ne 0) { Write-Error "Build failed"; exit 1 }
-
-Write-Output "--- Building TACDev ---"
-& cmake --build "build\Release" --target TACDev
-if ($LASTEXITCODE -ne 0) { Write-Error "Build failed"; exit 1 }
-
-Write-Output "--- BUILD SUCCESS ---"
+Write-Host "MSVC env loaded from: $vcvars"
+Write-Host "Qt root: $qtRoot"
