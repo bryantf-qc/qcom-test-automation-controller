@@ -69,13 +69,6 @@ target_include_directories(qtac-app PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../source/libraries/qt-adapter/include
 )
 
-if(WIN32)
-    target_link_directories(qtac-app PRIVATE
-        "${CMAKE_SOURCE_DIR}/__Builds/x64/Release/lib"
-        "${CMAKE_SOURCE_DIR}/__Builds/x64/Debug/lib"
-    )
-endif()
-
 target_link_libraries(qtac-app PRIVATE
     Qt6::Core
     Qt6::Gui
@@ -85,11 +78,10 @@ target_link_libraries(qtac-app PRIVATE
 )
 
 if(WIN32)
-    target_link_libraries(qtac-app PRIVATE
-        ftd2xx
-        Advapi32
-        SetupAPI
-    )
+    if(COMMAND link_ftd2xx)
+        link_ftd2xx(qtac-app)
+    endif()
+    target_link_libraries(qtac-app PRIVATE Advapi32 SetupAPI)
     # RC compilation with Ninja requires special handling; disabled for now.
     # target_sources(qtac-app PRIVATE resources/TAC.rc)
 endif()

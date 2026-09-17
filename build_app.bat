@@ -30,7 +30,7 @@ if defined QTDIR (
 )
 set "PATH=%QTBIN%;%PATH%"
 
-cmake -S . -B build\Release -DCMAKE_PREFIX_PATH="%QTROOT%" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl > build_out.txt 2>&1
+cmake -S source -B build\Release -DCMAKE_PREFIX_PATH="%QTROOT%" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl > build_out.txt 2>&1
 if errorlevel 1 (
     echo CMAKE CONFIGURE FAILED
     type build_out.txt

@@ -184,7 +184,7 @@ QtacCoreSettings(qtac-core)
 # BOOST_ALL_NO_LIB disables Boost's Windows auto-link pragmas so the linker
 # does not try to find a precompiled libboost_json-*.lib.
 target_include_directories(qtac-core PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/third-party/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../third-party/include>
 )
 target_compile_definitions(qtac-core PUBLIC BOOST_ALL_NO_LIB)
 
@@ -192,37 +192,31 @@ target_link_libraries(qtac-core PUBLIC serialport hidapi::hidapi)
 
 # -----------------------------------------------------------------------
 # FTDI D2XX library
-# Assumes the ftd2xx SDK is installed in one of the standard locations.
-# Adjust paths as needed for your environment.
+# The link_ftd2xx() helper is provided by the parent project
+# (source/CMakeLists.txt or third-party/CMakeLists.txt), which handles
+# downloading and staging the library before this file is processed.
 # -----------------------------------------------------------------------
 option(QTAC_BUILD_FTDI "Include FTDI hardware support in qtac-core" ON)
 
 if(QTAC_BUILD_FTDI)
-    if(WIN32)
-        # Windows: link ftd2xx.lib from the FTDI CDM driver package
+    if(COMMAND link_ftd2xx)
+        link_ftd2xx(qtac-core)
+    else()
+        # Fallback for standalone builds where the parent hasn't run yet
         find_library(FTD2XX_LIB ftd2xx
             HINTS
-                "$ENV{PROGRAMFILES}/FTDI/CDM Driver Package - Bus D2XX (v2.12.28)/Static/amd64"
-                "${CMAKE_CURRENT_SOURCE_DIR}/../../third-party/ftd2xx/win64"
-                "${CMAKE_SOURCE_DIR}/__Builds/x64/Release/lib"
-                "${CMAKE_SOURCE_DIR}/__Builds/x64/Debug/lib"
-        )
-        if(FTD2XX_LIB)
-            target_link_libraries(qtac-core PUBLIC ${FTD2XX_LIB})
-        else()
-            message(WARNING "ftd2xx library not found; FTDI hardware support disabled")
-        endif()
-    elseif(UNIX)
-        # Linux: link libftd2xx.a or libftd2xx.so
-        find_library(FTD2XX_LIB ftd2xx
-            HINTS
+                "${CMAKE_CURRENT_SOURCE_DIR}/../../__Builds/x64/Release/lib"
+                "${CMAKE_CURRENT_SOURCE_DIR}/../../__Builds/x64/Debug/lib"
+                "${CMAKE_CURRENT_SOURCE_DIR}/../../__Builds/Linux/Release/lib"
+                "${CMAKE_CURRENT_SOURCE_DIR}/../../__Builds/Linux/Debug/lib"
                 "/usr/local/lib"
-                "${CMAKE_CURRENT_SOURCE_DIR}/../../third-party/ftd2xx/linux"
-                "${CMAKE_SOURCE_DIR}/__Builds/Linux/Debug/lib"
-                "${CMAKE_SOURCE_DIR}/__Builds/Linux/Release/lib"
         )
         if(FTD2XX_LIB)
-            target_link_libraries(qtac-core PUBLIC ${FTD2XX_LIB} dl pthread)
+            if(UNIX)
+                target_link_libraries(qtac-core PUBLIC ${FTD2XX_LIB} dl pthread)
+            else()
+                target_link_libraries(qtac-core PUBLIC ${FTD2XX_LIB})
+            endif()
         else()
             message(WARNING "ftd2xx library not found; FTDI hardware support disabled")
         endif()

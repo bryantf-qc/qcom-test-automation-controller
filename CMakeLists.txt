@@ -8,7 +8,7 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 find_package(QT NAMES Qt6 REQUIRED COMPONENTS Core Multimedia)
@@ -17,10 +17,6 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Concurrent Gui Multimedia
 qt_standard_project_setup(REQUIRES 6.9)
 
 add_subdirectory(third-party)
-add_subdirectory(source/library)
-add_subdirectory(source/libraries/qt-adapter)
-add_subdirectory(source/tacdev)
-add_subdirectory(source/test)
-add_subdirectory(source/app)
-# interfaces/C++/TACDev replaced by source/tacdev (Qt-free build)
-# add_subdirectory(interfaces)
+add_subdirectory(src/libraries)
+add_subdirectory(src/applications)
+add_subdirectory(interfaces)

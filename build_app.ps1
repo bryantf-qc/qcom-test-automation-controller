@@ -43,7 +43,7 @@ Set-Location $root
 
 # Configure
 Write-Output "--- Configuring ---"
-& cmake -S . -B "build\Release" "-DCMAKE_PREFIX_PATH=$qtRoot" -G Ninja -DCMAKE_BUILD_TYPE=Release
+& cmake -S "source" -B "build\Release" "-DCMAKE_PREFIX_PATH=$qtRoot" -G Ninja -DCMAKE_BUILD_TYPE=Release
 if ($LASTEXITCODE -ne 0) { Write-Error "Configure failed"; exit 1 }
 
 # Build qtac-app and TACDev

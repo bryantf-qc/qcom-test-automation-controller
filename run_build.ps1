@@ -7,7 +7,7 @@ Set-Location $PSScriptRoot
 if (Test-Path build) { Remove-Item -Recurse -Force build }
 
 Write-Host '=== CMAKE CONFIGURE ==='
-& cmake -S . -B build "-DCMAKE_PREFIX_PATH=$qtRoot" -DCMAKE_COLOR_DIAGNOSTICS=OFF -G 'Visual Studio 17 2022' -A x64 2>&1 | Tee-Object -FilePath $logfile
+& cmake -S "$PSScriptRoot\source" -B build "-DCMAKE_PREFIX_PATH=$qtRoot" -DCMAKE_COLOR_DIAGNOSTICS=OFF -G 'Visual Studio 17 2022' -A x64 2>&1 | Tee-Object -FilePath $logfile
 if ($LASTEXITCODE -ne 0) { Write-Host 'CONFIGURE FAILED'; exit 1 }
 
 Write-Host '=== BUILD DEBUG ==='

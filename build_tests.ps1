@@ -5,7 +5,7 @@ $build = "$PSScriptRoot\build\Release"
 $out   = "$PSScriptRoot\build_out.txt"
 
 Write-Host "--- Configuring ---"
-& cmake -S "$PSScriptRoot" -B "$build" "-DCMAKE_PREFIX_PATH=$qtRoot" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl 2>&1 | Tee-Object -FilePath $out
+& cmake -S "$PSScriptRoot\source" -B "$build" "-DCMAKE_PREFIX_PATH=$qtRoot" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl 2>&1 | Tee-Object -FilePath $out
 if ($LASTEXITCODE -ne 0) { Write-Error "Configure failed"; exit 1 }
 
 Write-Host "--- Building ---"
