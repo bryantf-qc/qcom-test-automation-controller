@@ -1,6 +1,6 @@
-# Build and Run Guide — TACDev.dll and qtac-app.exe
+# Build and Run Guide — TACDev and qtac-app
 
-## Prerequisites
+## Prerequisites (Windows)
 
 | Tool | Version | Notes |
 |------|---------|-------|
@@ -12,9 +12,127 @@
 
 ---
 
-## FTDI Bootstrap (one-time)
+## Prerequisites (Linux)
 
-The build requires `ftd2xx.lib` and `ftd2xx.dll` placed under `__Builds\x64\`.
+| Tool | Version | Notes |
+|------|---------|-------|
+| GCC | 7+ | C++11 support required |
+| CMake | 3.22+ | Must be on `PATH` |
+| Ninja | any | Install via `sudo apt install ninja-build` |
+| Qt | 6.9+ | GCC 64-bit component required (e.g., `Qt/6.10.2/gcc_64`) |
+| libudev-dev | any | Install via `sudo apt install libudev-dev` (required for hidapi) |
+
+---
+
+## Build (Linux)
+
+### Using the build script (recommended)
+
+The root-level `build.sh` script builds both Debug and Release configurations and deploys Qt runtime dependencies:
+
+```bash
+# Set QTBIN to point to your Qt installation's bin directory
+export QTBIN=/path/to/Qt/6.10.2/gcc_64/bin
+
+# Run the build script
+./build.sh
+```
+
+The script will:
+1. Validate that `QTBIN` points to a valid Qt GCC 64-bit installation
+2. Download and extract the FTDI library (if not already present)
+3. Configure and build Debug configuration
+4. Configure and build Release configuration
+5. Deploy Qt runtime libraries and plugins to `__Builds/Linux/Release/`
+
+Outputs:
+```
+__Builds/Linux/Release/bin/qtac-app           # GUI application
+__Builds/Linux/Release/lib/libTACDev.so       # Shared library
+__Builds/Linux/Debug/lib/libqtac-core.a       # Static library
+```
+
+### Manual CMake steps
+
+If you prefer manual control or want to build only Debug or Release:
+
+```bash
+# Set up environment
+export QTBIN=/path/to/Qt/6.10.2/gcc_64/bin
+export PATH="$QTBIN:$PATH"
+
+# Configure Debug build
+cmake -S . -B build/Debug \
+    -DCMAKE_PREFIX_PATH="$(dirname "$QTBIN")" \
+    -DCMAKE_BUILD_TYPE=Debug \
+    -G Ninja
+
+# Build Debug
+cmake --build build/Debug
+
+# Configure Release build
+cmake -S . -B build/Release \
+    -DCMAKE_PREFIX_PATH="$(dirname "$QTBIN")" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -G Ninja
+
+# Build Release
+cmake --build build/Release
+```
+
+### Building individual targets
+
+```bash
+cmake --build build/Release --target qtac-app      # GUI application only
+cmake --build build/Release --target TACDev        # Shared library only
+cmake --build build/Release --target qtac-core     # Qt-free static lib only
+```
+
+### Incremental builds
+
+After the initial configuration, you can rebuild quickly:
+
+```bash
+cd build/Debug   # or build/Release
+make -j$(nproc)
+```
+
+---
+
+## Running Tests (Linux)
+
+### Non-hardware tests (no device required)
+
+```bash
+cd build/Debug/source/test
+
+./test_bytearray
+./test_coders_commands
+./test_containers
+./test_platform_configs
+./test_signal
+./test_string
+./test_stringutils
+./test_tacdev_api  # partial - init/version tests only
+```
+
+### Hardware integration tests (device must be connected)
+
+```bash
+cd build/Debug/source/test
+
+./test_hardware_ftdi    # requires a TACLite (FTDI) device
+./test_hardware_psoc    # requires a PSoC TAC device
+./test_tacdev_api       # full test requires any supported TAC device
+```
+
+**Note**: Hardware tests require appropriate udev rules for device access. See `udev-rules/` directory.
+
+---
+
+## FTDI Bootstrap (Windows only)
+
+The Windows build requires `ftd2xx.lib` and `ftd2xx.dll` placed under `__Builds\x64\`.
 Copy them from an existing checkout or from your FTDI CDM driver installation:
 
 ```powershell
@@ -33,7 +151,7 @@ Or copy directly from the FTDI CDM driver package (`amd64\ftd2xx.lib`, `ftd2xx.d
 
 ---
 
-## Build
+## Build (Windows)
 
 ### Quick build (recommended) — PowerShell
 
@@ -97,7 +215,7 @@ cmake --build build\Release --target qtac-core     # Qt-free static lib only
 
 ---
 
-## Rebuild (incremental, no reconfigure)
+## Rebuild (Windows — incremental, no reconfigure)
 
 When only source files change and the build is already configured:
 
@@ -109,7 +227,7 @@ cd C:\ProdTools\qcom-test-automation-controller
 
 ---
 
-## Deploy (qtac-app.exe)
+## Deploy (Windows — qtac-app.exe)
 
 After building, run the deploy script to copy Qt runtime DLLs and device
 configuration files alongside the executable:
@@ -137,7 +255,7 @@ same directory** as the executable. `deploy_app.ps1` places them there.
 
 ---
 
-## Deploy (TACDev.dll)
+## Deploy (Windows — TACDev.dll)
 
 `TACDev.dll` is a Qt-free C API DLL. Consumers need:
 
@@ -189,7 +307,7 @@ int main(void) {
 
 ---
 
-## Running Tests
+## Running Tests (Windows)
 
 ### Non-hardware tests (no device required)
 
@@ -246,7 +364,7 @@ C:\ProdTools\qcom-test-automation-controller\
 
 ---
 
-## Troubleshooting
+## Troubleshooting (Windows)
 
 | Symptom | Likely cause | Fix |
 |---------|-------------|-----|
@@ -257,3 +375,18 @@ C:\ProdTools\qcom-test-automation-controller\
 | `cl.exe` not found | MSVC env not loaded | Use `build_app.ps1`/`build_app.bat` which load `vcvars64.bat` |
 | Build fails with `LINK : fatal error LNK1181` | Stale build dir | Delete `build\Release` and reconfigure |
 | hidapi not found | FetchContent network issue | Ensure internet access during first configure |
+
+---
+
+## Troubleshooting (Linux)
+
+| Symptom | Likely cause | Fix |
+|---------|-------------|-----|
+| `QTBIN is not set` | Environment variable missing | `export QTBIN=/path/to/Qt/6.x.x/gcc_64/bin` |
+| `libudev not found` | Missing development headers | `sudo apt install libudev-dev` |
+| `cmake` can't find Qt | Qt not on `CMAKE_PREFIX_PATH` | Pass `-DCMAKE_PREFIX_PATH=/path/to/Qt/6.x.x/gcc_64` |
+| `ninja not found` | Ninja build tool not installed | `sudo apt install ninja-build` |
+| Permission denied on device | Missing udev rules | Copy rules from `udev-rules/` to `/etc/udev/rules.d/` and reload |
+| Qt platform plugin error | Missing Qt XCB libraries | Ensure `libQt6XcbQpa.so` is deployed (done by `build.sh`) |
+| hidapi not found | FetchContent network issue | Ensure internet access during first configure |
+| Ambiguous `String::number()` call | uint64_t type mismatch | Update to `static_cast<unsigned long long>` |
