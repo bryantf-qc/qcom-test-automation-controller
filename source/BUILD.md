@@ -62,7 +62,7 @@ export QTBIN=/path/to/Qt/6.10.2/gcc_64/bin
 export PATH="$QTBIN:$PATH"
 
 # Configure Debug build
-cmake -S . -B build/Debug \
+cmake -S source -B build/Debug \
     -DCMAKE_PREFIX_PATH="$(dirname "$QTBIN")" \
     -DCMAKE_BUILD_TYPE=Debug \
     -G Ninja
@@ -71,7 +71,7 @@ cmake -S . -B build/Debug \
 cmake --build build/Debug
 
 # Configure Release build
-cmake -S . -B build/Release \
+cmake -S source -B build/Release \
     -DCMAKE_PREFIX_PATH="$(dirname "$QTBIN")" \
     -DCMAKE_BUILD_TYPE=Release \
     -G Ninja
@@ -104,7 +104,7 @@ make -j$(nproc)
 ### Non-hardware tests (no device required)
 
 ```bash
-cd build/Debug/source/test
+cd build/Debug/test
 
 ./test_bytearray
 ./test_coders_commands
@@ -119,7 +119,7 @@ cd build/Debug/source/test
 ### Hardware integration tests (device must be connected)
 
 ```bash
-cd build/Debug/source/test
+cd build/Debug/test
 
 ./test_hardware_ftdi    # requires a TACLite (FTDI) device
 ./test_hardware_psoc    # requires a PSoC TAC device
@@ -130,24 +130,17 @@ cd build/Debug/source/test
 
 ---
 
-## FTDI Bootstrap (Windows only)
+## FTDI Bootstrap (automatic)
 
-The Windows build requires `ftd2xx.lib` and `ftd2xx.dll` placed under `__Builds\x64\`.
-Copy them from an existing checkout or from your FTDI CDM driver installation:
+The FTDI `ftd2xx` library is downloaded and extracted automatically during
+`cmake` configure. No manual setup is required. On first configure, CMake
+fetches the CDM driver archive from the FTDI website (or the Wayback Machine
+mirror), extracts `ftd2xx.lib` and `ftd2xx.dll`, and places them under
+`__Builds\x64\` (Windows) or `__Builds\Linux\` (Linux).
 
-```powershell
-# From an existing qcom-test-automation-controller checkout at the default location:
-Copy-Item C:\ProdTools\qcom-test-automation-controller\__Builds\x64\Release\lib\ftd2xx.lib `
-          __Builds\x64\Release\lib\ -Force
-Copy-Item C:\ProdTools\qcom-test-automation-controller\__Builds\x64\Release\bin\ftd2xx.dll `
-          __Builds\x64\Release\bin\ -Force
-Copy-Item C:\ProdTools\qcom-test-automation-controller\__Builds\x64\Debug\lib\ftd2xx.lib `
-          __Builds\x64\Debug\lib\  -Force
-Copy-Item C:\ProdTools\qcom-test-automation-controller\__Builds\x64\Debug\bin\ftd2xx.dll `
-          __Builds\x64\Debug\bin\  -Force
-```
-
-Or copy directly from the FTDI CDM driver package (`amd64\ftd2xx.lib`, `ftd2xx.dll`).
+If your machine has no internet access, manually place the archive at
+`third-party\CDM-v2.12.36.4-WHQL-Certified.zip` before running cmake; the
+bootstrap will use the local file instead of downloading it.
 
 ---
 
@@ -163,7 +156,7 @@ cd C:\ProdTools\qcom-test-automation-controller
 Performs:
 1. Locates VS2022 via `vswhere.exe` and loads the MSVC x64 environment
 2. Locates Qt: uses `QTDIR` env var if set, otherwise searches `C:\Qt\` for any `msvc2022_64` kit
-3. `cmake -S . -B build\Release -DCMAKE_PREFIX_PATH=<Qt> -G Ninja -DCMAKE_BUILD_TYPE=Release`
+3. `cmake -S source -B build\Release -DCMAKE_PREFIX_PATH=<Qt> -G Ninja -DCMAKE_BUILD_TYPE=Release`
 4. `cmake --build build\Release --target qtac-app`
 5. `cmake --build build\Release --target TACDev`
 
@@ -197,7 +190,7 @@ set PATH=C:\Qt\6.11.1\msvc2022_64\bin;%PATH%
 
 cd C:\ProdTools\qcom-test-automation-controller
 
-cmake -S . -B build\Release ^
+cmake -S source -B build\Release ^
       -DCMAKE_PREFIX_PATH=C:\Qt\6.11.1\msvc2022_64 ^
       -G Ninja ^
       -DCMAKE_BUILD_TYPE=Release
@@ -344,21 +337,22 @@ cd C:\ProdTools\qcom-test-automation-controller
 
 ```
 C:\ProdTools\qcom-test-automation-controller\
-├── CMakeLists.txt              root — adds all subdirectories
-├── build_app.ps1               PowerShell build script (uses vswhere)
-├── build_app.bat               Batch build script
-├── rebuild_library.ps1         Incremental rebuild of library + app targets
-├── rebuild_tests.ps1           Incremental rebuild of test targets
-├── deploy_app.ps1              windeployqt + copy configs
-├── __Builds\x64\               ftd2xx.lib / ftd2xx.dll (bootstrapped)
-├── configurations\             devicelist.json, *.tcnf
-├── third-party\                boost, hidapi, libserialport, nlohmann/json
+├── CMakeLists.txt              root — builds src/ subtree only (upstream)
 ├── source\
+│   ├── CMakeLists.txt          standalone entry point for source/ subtree
 │   ├── library\                qtac-core Qt-free static lib
 │   ├── libraries\qt-adapter\   Qt ↔ qtac-core bridge (static lib)
 │   ├── app\                    qtac-app Qt6 GUI source
 │   ├── tacdev\                 TACDev.dll C API source + TACDev.h
 │   └── test\                   unit + integration tests
+├── build_app.ps1               PowerShell build script (uses vswhere)
+├── build_app.bat               Batch build script
+├── rebuild_library.ps1         Incremental rebuild of library + app targets
+├── rebuild_tests.ps1           Incremental rebuild of test targets
+├── deploy_app.ps1              windeployqt + copy configs
+├── __Builds\x64\               ftd2xx.lib / ftd2xx.dll (auto-bootstrapped)
+├── configurations\             devicelist.json, *.tcnf
+├── third-party\                boost, hidapi, libserialport, nlohmann/json
 └── build\Release\              cmake build output
 ```
 
@@ -369,7 +363,7 @@ C:\ProdTools\qcom-test-automation-controller\
 | Symptom | Likely cause | Fix |
 |---------|-------------|-----|
 | `cmake` can't find Qt | Qt not on `CMAKE_PREFIX_PATH` | Pass `-DCMAKE_PREFIX_PATH=C:\Qt\6.11.1\msvc2022_64` |
-| `ftd2xx.lib not found` | FTDI not bootstrapped | Copy from CDM driver package or sibling checkout |
+| `ftd2xx.lib not found` | FTDI bootstrap failed or no internet | Delete `build\Release` and reconfigure; or pre-place archive at `third-party\CDM-v2.12.36.4-WHQL-Certified.zip` |
 | `ftd2xx.dll not found` at runtime | DLL not deployed | Run `deploy_app.ps1` or copy manually |
 | App opens but shows no devices | `devicelist.json` missing | Run `deploy_app.ps1` or copy `configurations\` files |
 | `cl.exe` not found | MSVC env not loaded | Use `build_app.ps1`/`build_app.bat` which load `vcvars64.bat` |
