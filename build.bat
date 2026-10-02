@@ -11,6 +11,7 @@ if /i "%PROCESSOR_ARCHITECTURE%"=="ARM64" (
     set ARCH=ARM64
     set EXPECTED_QT_PATH=msvc2022_arm64
     set VCVARS_SCRIPT=vcvarsarm64.bat
+    set VCVARS_SCRIPT_CROSS=vcvarsamd64_arm64.bat
     set VS_COMPONENT=MSVC v143 - VS 2022 C++ ARM64 build tools
 ) else (
     set ARCH=x64
@@ -98,6 +99,39 @@ if exist "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxi
     set "VS_INSTALL_DIR=C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools"
     echo VS2022 toolchain     : BuildTools [OK]
     goto :vcvars_done
+)
+
+@REM On Windows-on-ARM CI runners, native vcvarsarm64.bat may be absent;
+@REM fall back to the cross-compiler (x64-host -> ARM64-target) if present.
+if /i "%ARCH%"=="ARM64" if not "%VCVARS_SCRIPT_CROSS%"=="" (
+    if exist "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\%VCVARS_SCRIPT_CROSS%" (
+        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\%VCVARS_SCRIPT_CROSS%"
+        set VCVARS_FOUND=1
+        set "VS_INSTALL_DIR=C:\Program Files\Microsoft Visual Studio\2022\Enterprise"
+        echo VS2022 toolchain     : Enterprise cross ^(amd64_arm64^) [OK]
+        goto :vcvars_done
+    )
+    if exist "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\%VCVARS_SCRIPT_CROSS%" (
+        call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\%VCVARS_SCRIPT_CROSS%"
+        set VCVARS_FOUND=1
+        set "VS_INSTALL_DIR=C:\Program Files\Microsoft Visual Studio\2022\Community"
+        echo VS2022 toolchain     : Community cross ^(amd64_arm64^) [OK]
+        goto :vcvars_done
+    )
+    if exist "C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\%VCVARS_SCRIPT_CROSS%" (
+        call "C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\%VCVARS_SCRIPT_CROSS%"
+        set VCVARS_FOUND=1
+        set "VS_INSTALL_DIR=C:\Program Files\Microsoft Visual Studio\2022\Professional"
+        echo VS2022 toolchain     : Professional cross ^(amd64_arm64^) [OK]
+        goto :vcvars_done
+    )
+    if exist "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\%VCVARS_SCRIPT_CROSS%" (
+        call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\%VCVARS_SCRIPT_CROSS%"
+        set VCVARS_FOUND=1
+        set "VS_INSTALL_DIR=C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools"
+        echo VS2022 toolchain     : BuildTools cross ^(amd64_arm64^) [OK]
+        goto :vcvars_done
+    )
 )
 
 :vcvars_done
